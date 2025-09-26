@@ -1,4 +1,4 @@
-import { request, HttpError } from '../lib/http';
+import { request } from '../lib/http';
 
 export type Area = {
   id: string;
@@ -12,33 +12,32 @@ export type Area = {
   created_at: string;
 };
 
+// Tipo para a resposta paginada da API
+type SearchAreasResponse = {
+  total: number;
+  limit: number;
+  page: number;
+  areas: Area[];
+};
+
 export async function searchAreas(params: {
   owner_id: string;   // <-- você passa o user.id aqui
   page?: number;
   limit?: number;
-}) {
-  const page = params.page ?? 1;
-  const limit = params.limit ?? 50;
-
-  // 1) GET com query
+}): Promise<SearchAreasResponse> {
+  // Envia apenas o owner_id, sem page/limit para evitar problemas de validação
   const qs = new URLSearchParams({
     owner_id: params.owner_id,
-    page: String(page),
-    limit: String(limit),
   });
-  try {
-    return await request<Area[]>(`/area/search?${qs.toString()}`, { auth: true });
-  } catch (e) {
-    // 2) POST com body (fallback)
-    if (e instanceof HttpError && e.status === 400) {
-      return await request<Area[]>(`/area/search`, {
-        method: 'POST',
-        body: { owner_id: params.owner_id, page, limit },
-        auth: true,
-      });
-    }
-    throw e;
-  }
+  
+  const url = `/area/search?${qs.toString()}`;
+  console.log('Chamando API:', url);
+  console.log('Owner ID:', params.owner_id);
+  
+  const result = await request<SearchAreasResponse>(url, { auth: true });
+  console.log('Resultado da API /area/search:', result);
+  
+  return result;
 }
 
 export async function getArea(id: string) {
