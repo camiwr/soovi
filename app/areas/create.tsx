@@ -3,9 +3,11 @@ import { ScrollView, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from
 import { router } from 'expo-router';
 import { createArea } from '../../services/areas';
 import { useAuth } from '../../context/AuthContext';   
+import { useToast } from '../../components/UI/Toast';
 
 export default function CreateArea() {
   const { user } = useAuth();                           
+  const { show } = useToast();
 
   const [registration, setRegistration] = useState('');
   const [description, setDescription] = useState('');
@@ -15,9 +17,9 @@ export default function CreateArea() {
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
-    if (!user?.id) return Alert.alert('Sessão', 'Você precisa estar logada para cadastrar.');
+    if (!user?.id) return show('Sessão', 'Você precisa estar logada para cadastrar.', 'info');
     if (!description || !totalArea || !priceM2) {
-      return Alert.alert('Validação', 'Preencha Descrição, Área total e Valor do m².');
+      return show('Validação', 'Preencha a Descrição, Área total e Valor do m².', 'info');
     }
     try {
       setSaving(true);
@@ -33,11 +35,11 @@ export default function CreateArea() {
 
       console.log('POST /area', body);
       await createArea(body);
-      Alert.alert('Sucesso', 'Área cadastrada');
+      show('Sucesso', 'Área cadastrada', 'success');
       router.back(); 
     } catch (e: any) {
       console.error(e);
-      Alert.alert('Erro', e?.message || 'Falha ao salvar área');
+      show('Erro', e?.message || 'Falha ao salvar área', 'error');
     } finally {
       setSaving(false);
     }

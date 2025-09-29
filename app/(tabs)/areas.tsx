@@ -4,9 +4,13 @@ import { Alert, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, 
 import { useAuth } from '../../context/AuthContext';
 import { getToken } from '../../lib/session';
 import { Area, deleteArea, getArea, searchAreas, updateArea } from '../../services/areas';
+import { useToast } from '../../components/UI/Toast';
+import { useConfirm } from '../../components/UI/ConfirmDialog';
 
 export default function AreasScreen() {
   const { user, signOut } = useAuth();
+  const { show } = useToast();
+  const { confirm } = useConfirm();
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -26,67 +30,52 @@ export default function AreasScreen() {
     try {
       setLoading(true);
       console.log('Carregando áreas para usuário:', user.id);
-      
-      // Debug: verificar se o token está presente
+
       const token = await getToken();
       console.log('Token presente:', !!token);
       if (token) {
         console.log('Token preview:', token.substring(0, 20) + '...');
       }
-      
-      const data = await searchAreas({ 
-        owner_id: user.id, 
-        limit: 50, 
-        page: 1 
+
+      const data = await searchAreas({
+        owner_id: user.id,
+        limit: 50,
+        page: 1
       });
-      
+
       console.log('Resposta da API - Tipo:', typeof data);
       console.log('Resposta da API - Total de áreas na resposta:', data.total || 0);
-      
-      // A API retorna um objeto com {total, limit, page, areas}
-      // Precisamos extrair o array de áreas da propriedade 'areas'
+
       const realAreas = Array.isArray(data.areas) ? data.areas : [];
       console.log('Áreas extraídas:', realAreas.length);
-      
+
       if (realAreas.length > 0) {
         console.log('Primeira área:', JSON.stringify(realAreas[0], null, 2));
       }
-      
+
       setAreas(realAreas);
-      
+
     } catch (e: any) {
       console.log('AREAS SEARCH ERROR:', e?.data || e?.message || e);
-      
-      // Se for erro de autenticação (403), redireciona para login
+
       if (e?.statusCode === 403 || e?.status === 403 || e?.message === 'INVALID_TOKEN') {
-        Alert.alert(
-          '🔐 Sessão Expirada', 
-          'Sua sessão expirou. Por favor, faça login novamente.',
-          [
-            { 
-              text: 'Fazer Login', 
-              onPress: async () => {
-                // Limpa a sessão corretamente
-                await signOut();
-                router.replace('/(auth)/login');
-              }
-            }
-          ]
-        );
+        show('🔐 Sessão Expirada', 'Sua sessão expirou. Por favor, faça login novamente.', 'error');
+        await signOut();
+        router.replace('/(auth)/login');
         setAreas([]);
         setLoading(false);
         return;
       }
-      
+
       // Para outros erros, mostra mensagem genérica
       if (e?.message && !e?.message.includes('404') && !e?.message.includes('Network')) {
         Alert.alert(
-          'Erro ao carregar áreas', 
+          'Erro ao carregar áreas',
           'Não foi possível carregar suas áreas. Verifique sua conexão e tente novamente.',
           [{ text: 'OK' }]
         );
       }
-      
+
       // Em caso de erro, define array vazio (sem áreas)
       setAreas([]);
     } finally {
@@ -98,7 +87,7 @@ export default function AreasScreen() {
   useEffect(() => { load(); }, [load]);
 
   useFocusEffect(
-    useCallback(() => { 
+    useCallback(() => {
       load();
     }, [load])
   );
@@ -111,14 +100,12 @@ export default function AreasScreen() {
 
   async function openModal(a: Area) {
     try {
-      // Para todas as áreas, tenta pegar versão atualizada por ID
       const full = await getArea(a.id);
       setSelected(full);
       setForm(full);
       setEditing(false);
     } catch (error) {
       console.log('Erro ao carregar detalhes da área:', error);
-      // Se falhar ao carregar detalhes, usa os dados que já temos
       setSelected(a);
       setForm(a);
       setEditing(false);
@@ -127,10 +114,10 @@ export default function AreasScreen() {
 
   async function handleSave() {
     if (!selected) return;
-    
+
     try {
-      setEditing(false); // Sai do modo de edição imediatamente
-      
+      setEditing(false);
+
       await updateArea(selected.id, {
         description: form.description,
         registration_number: form.registration_number,
@@ -138,50 +125,39 @@ export default function AreasScreen() {
         suggested_lot_price_m2: form.suggested_lot_price_m2,
         lot_size: form.lot_size,
       });
-      
-      Alert.alert('✅ Sucesso', 'Área atualizada com sucesso!');
+
+      show('✅ Sucesso', 'Área atualizada com sucesso!', 'success');
       setSelected(null);
-      load(); // Recarrega a lista
-      
+      load(); 
+
     } catch (e: any) {
       console.log('Erro ao atualizar área:', e);
-      Alert.alert(
-        '❌ Erro', 
-        e?.message || 'Não foi possível atualizar a área. Tente novamente.'
-      );
-      setEditing(true); // Volta ao modo de edição se der erro
+      show('❌ Erro', e?.message || 'Não foi possível atualizar a área. Tente novamente.', 'error');
+      setEditing(true); 
     }
   }
 
-  async function handleDelete() {
-    if (!selected) return;
-    
-    Alert.alert(
-      '🗑️ Confirmar exclusão', 
-      `Tem certeza que deseja excluir a área "${selected.description || 'sem nome'}"?\n\nEsta ação não pode ser desfeita.`, 
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteArea(selected.id);
-              Alert.alert('✅ Sucesso', 'Área excluída com sucesso!');
-              setSelected(null);
-              load(); // Recarrega a lista
-            } catch (e: any) {
-              console.log('Erro ao excluir área:', e);
-              Alert.alert(
-                '❌ Erro', 
-                e?.message || 'Não foi possível excluir a área. Tente novamente.'
-              );
-            }
-          }
-        },
-      ]
-    );
-  }
+async function handleDelete() {
+  if (!selected) return;
+
+  confirm({
+    title: '🗑️ Confirmar exclusão',
+    message: `Tem certeza que deseja excluir a área "${selected.description || 'sem nome'}"?\n\nEsta ação não pode ser desfeita.`,
+    confirmText: 'Excluir',
+    cancelText: 'Cancelar',
+    onConfirm: async () => {
+      try {
+        await deleteArea(selected.id);
+        setSelected(null);
+        show('✅ Sucesso', 'Área excluída com sucesso!', 'success');
+        await load(); 
+      } catch (e: any) {
+        console.log('Erro ao excluir área:', e);
+        show('❌ Erro', e?.message || 'Não foi possível excluir a área. Tente novamente.', 'error');
+      }
+    },
+  });
+}
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -214,8 +190,8 @@ export default function AreasScreen() {
             <Text style={s.emptyText}>🏞️</Text>
             <Text style={s.emptyTitle}>Suas áreas aparecerão aqui</Text>
             <Text style={s.emptySubtitle}>Comece criando sua primeira área!</Text>
-            <TouchableOpacity 
-              style={s.createFirstAreaBtn} 
+            <TouchableOpacity
+              style={s.createFirstAreaBtn}
               onPress={() => router.push('/areas/create')}
             >
               <Text style={s.createFirstAreaText}>➕ Criar primeira área</Text>
