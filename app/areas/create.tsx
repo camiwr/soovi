@@ -52,9 +52,9 @@ export default function CreateArea() {
 
       <Labeled value={registration} onChangeText={setRegistration} label="Matrícula (opcional)" />
       <Labeled value={description} onChangeText={setDescription} label="Descrição *" />
-      <Labeled value={totalArea} onChangeText={setTotalArea} label="Área total (m²) *" keyboardType="decimal-pad" />
-      <Labeled value={priceM2} onChangeText={setPriceM2} label="Valor do m² (R$) *" keyboardType="decimal-pad" />
       <Labeled value={lotSize} onChangeText={setLotSize} label="Tamanho do lote (m²)" keyboardType="decimal-pad" />
+      <Labeled value={totalArea} onChangeText={setTotalArea} label="Área total (hectares) *" keyboardType="decimal-pad" />
+      <Labeled value={priceM2} onChangeText={setPriceM2} label="Valor do m² (R$) *" keyboardType="decimal-pad" />
 
       <TouchableOpacity style={[s.btn, { backgroundColor: '#10B981' }]} onPress={handleSave} disabled={saving}>
         <Text style={s.btnText}>{saving ? 'Salvando...' : 'Salvar Área'}</Text>

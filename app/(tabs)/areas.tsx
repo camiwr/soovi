@@ -1,11 +1,11 @@
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useConfirm } from '../../components/UI/ConfirmDialog';
+import { useToast } from '../../components/UI/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { getToken } from '../../lib/session';
 import { Area, deleteArea, getArea, searchAreas, updateArea } from '../../services/areas';
-import { useToast } from '../../components/UI/Toast';
-import { useConfirm } from '../../components/UI/ConfirmDialog';
 
 export default function AreasScreen() {
   const { user, signOut } = useAuth();
@@ -53,7 +53,13 @@ export default function AreasScreen() {
         console.log('Primeira área:', JSON.stringify(realAreas[0], null, 2));
       }
 
-      setAreas(realAreas);
+      const sortedAreas = realAreas.sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return dateB - dateA;
+      });
+
+      setAreas(sortedAreas);
 
     } catch (e: any) {
       console.log('AREAS SEARCH ERROR:', e?.data || e?.message || e);
@@ -114,50 +120,53 @@ export default function AreasScreen() {
 
   async function handleSave() {
     if (!selected) return;
-
     try {
-      setEditing(false);
-
       await updateArea(selected.id, {
+        owner_id: selected.owner_id,                               // <- obrigatório p/ autorização
         description: form.description,
         registration_number: form.registration_number,
         total_area_hectare: form.total_area_hectare,
         suggested_lot_price_m2: form.suggested_lot_price_m2,
         lot_size: form.lot_size,
       });
-
-      show('✅ Sucesso', 'Área atualizada com sucesso!', 'success');
+      show('Sucesso', 'Área atualizada', 'success');
       setSelected(null);
-      load(); 
-
+      load();
     } catch (e: any) {
-      console.log('Erro ao atualizar área:', e);
-      show('❌ Erro', e?.message || 'Não foi possível atualizar a área. Tente novamente.', 'error');
-      setEditing(true); 
+      show('Erro', e?.message || 'Falha ao atualizar', 'error');
     }
   }
 
-async function handleDelete() {
-  if (!selected) return;
+  function handleDelete() {
+    if (!selected) {
+      console.log('handleDelete: Nenhuma área selecionada');
+      return;
+    }
+    const area = selected;
+    console.log('handleDelete: Área selecionada para exclusão:', area);
+    setSelected(null); // fecha o modal primeiro
+    setTimeout(() => {
+      console.log('handleDelete: Abrindo confirmação de exclusão');
+      confirm({
+        title: 'Remover área?',
+        message: 'Essa ação não pode ser desfeita.',
+        confirmText: 'Remover',
+        onConfirm: async () => {
+          console.log('handleDelete: Confirmação recebida, excluindo área:', area.id);
+          try {
+            await deleteArea(area.id);
+            console.log('handleDelete: Área excluída com sucesso');
+            show('Removida', 'A área foi excluída.', 'success');
+            load();
+          } catch (e: any) {
+            console.log('handleDelete: Erro ao excluir área:', e?.message || e);
+            show('Erro', e?.message || 'Falha ao deletar', 'error');
+          }
+        },
+      });
+    }, 30);
+  }
 
-  confirm({
-    title: '🗑️ Confirmar exclusão',
-    message: `Tem certeza que deseja excluir a área "${selected.description || 'sem nome'}"?\n\nEsta ação não pode ser desfeita.`,
-    confirmText: 'Excluir',
-    cancelText: 'Cancelar',
-    onConfirm: async () => {
-      try {
-        await deleteArea(selected.id);
-        setSelected(null);
-        show('✅ Sucesso', 'Área excluída com sucesso!', 'success');
-        await load(); 
-      } catch (e: any) {
-        console.log('Erro ao excluir área:', e);
-        show('❌ Erro', e?.message || 'Não foi possível excluir a área. Tente novamente.', 'error');
-      }
-    },
-  });
-}
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
