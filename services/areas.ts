@@ -12,7 +12,6 @@ export type Area = {
   created_at: string;
 };
 
-// Tipo para a resposta paginada da API
 type SearchAreasResponse = {
   total: number;
   limit: number;
@@ -20,12 +19,21 @@ type SearchAreasResponse = {
   areas: Area[];
 };
 
+// Função helper para verificar se há token válido
+async function ensureAuthenticated() {
+  const { getToken } = await import('../lib/session');
+  const token = await getToken();
+  if (!token) {
+    throw new Error('Usuário não autenticado. Faça login novamente.');
+  }
+  return token;
+}
+
 export async function searchAreas(params: {
-  owner_id: string;   // <-- você passa o user.id aqui
+  owner_id: string; 
   page?: number;
   limit?: number;
 }): Promise<SearchAreasResponse> {
-  // Envia apenas o owner_id, sem page/limit para evitar problemas de validação
   const qs = new URLSearchParams({
     owner_id: params.owner_id,
   });
@@ -57,9 +65,33 @@ export async function createArea(body: {
 }
 
 export async function updateArea(id: string, body: Partial<Area>) {
-  return request<Area>(`/area/${id}`, { method: 'PATCH', body, auth: true });
+  try {
+    await ensureAuthenticated();
+    console.log('Atualizando área:', id, body);
+    const result = await request<Area>(`/area/${id}`, { method: 'PATCH', body, auth: true });
+    console.log('Área atualizada com sucesso:', result);
+    return result;
+  } catch (error: any) {
+    console.error('Erro ao atualizar área:', error);
+    if (error?.status === 401) {
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+    throw error;
+  }
 }
 
 export async function deleteArea(id: string) {
-  return request(`/area/${id}`, { method: 'DELETE', auth: true });
+  try {
+    await ensureAuthenticated();
+    console.log('Deletando área:', id);
+    const result = await request(`/area/${id}`, { method: 'DELETE', auth: true });
+    console.log('Área deletada com sucesso');
+    return result;
+  } catch (error: any) {
+    console.error('Erro ao deletar área:', error);
+    if (error?.status === 401) {
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+    throw error;
+  }
 }

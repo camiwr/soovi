@@ -2,8 +2,6 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_KEY = 'user_token';
-// se quiser usar refresh token no futuro:
-// const REFRESH_KEY = 'refresh_token';
 
 export async function saveToken(token: string) {
   if (Platform.OS === 'web') {
