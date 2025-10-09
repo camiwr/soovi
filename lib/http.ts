@@ -36,12 +36,32 @@ export async function request<T = unknown>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'X-Timestamp': Date.now().toString(),
     ...(options.headers || {}),
   };
 
   if (options.auth) {
     const token = await getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    console.log('Token para requisição:', token ? `${token.substring(0, 20)}...` : 'nenhum');
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+      
+      // Adiciona o email do token no header para validação no servidor
+      try {
+        const tokenParts = token.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          if (payload.email) {
+            headers['X-Expected-User-Email'] = payload.email;
+          }
+        }
+      } catch (e) {
+        console.warn('Não foi possível extrair email do token para validação');
+      }
+    }
   }
 
   try {
