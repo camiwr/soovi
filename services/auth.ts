@@ -23,7 +23,6 @@ export async function loginPassword(email: string, password: string) {
   
   console.log('=== EXECUTANDO LOGIN NO SERVIDOR ===');
   console.log('Request ID:', requestId);
-  console.log('Session Buster:', sessionBuster);
   console.log('URL:', `${process.env.EXPO_PUBLIC_API_URL}/auth/login-password`);
   console.log('Email enviado:', email);
   
@@ -50,7 +49,6 @@ export async function loginPassword(email: string, password: string) {
     }
   }
   
-  // Aguarda mais tempo após logout
   await new Promise(resolve => setTimeout(resolve, 500));
   
   // uso fetch direto pra evitar qualquer interferência
@@ -62,18 +60,13 @@ export async function loginPassword(email: string, password: string) {
       'Pragma': 'no-cache',
       'Expires': '0',
       'X-Request-ID': requestId,
-      'X-Force-New-Session': 'true',
-      'X-Session-Buster': sessionBuster,
-      'X-Clear-Cache': 'true',
       'X-Timestamp': Date.now().toString(),
       'Connection': 'close'
     },
+    // CORREÇÃO APLICADA AQUI: Enviando apenas os campos que o servidor espera.
     body: JSON.stringify({ 
       email: email.trim(), 
       password: password,
-      sessionBuster: sessionBuster,
-      forceNewSession: true,
-      clearPreviousSessions: true
     }),
   });
 
@@ -107,7 +100,6 @@ export async function loginPassword(email: string, password: string) {
         console.error('Email enviado:', email.trim());
         console.error('Email no token:', tokenEmail);
         
-        // REJEITA IMEDIATAMENTE - não salva token incorreto
         throw new Error(`SERVIDOR RETORNOU TOKEN ERRADO! Esperado: ${email.trim()}, Recebido: ${tokenEmail}`);
       }
       
@@ -153,17 +145,14 @@ export async function me() {
   
   console.log('=== BUSCANDO DADOS DO USUÁRIO ===');
   console.log('Request ID:', requestId);
-  console.log('Cache Buster:', cacheBuster);
   
   const result = await request<User>(`/users/me?_=${cacheBuster}`, { 
     auth: true,
     headers: {
       'X-Request-ID': requestId,
-      'X-Cache-Buster': cacheBuster,
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
       'Expires': '0',
-      'X-Force-Fresh-Data': 'true'
     }
   });
   
@@ -183,7 +172,6 @@ export async function updateUser(id: string, payload: Partial<Pick<User, 'name' 
 export async function logout() {
   console.log('=== FAZENDO LOGOUT NO SERVIDOR ===');
   try {
-    // Tenta fazer logout no servidor primeiro
     await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/logout`, {
       method: 'POST',
       headers: { 
@@ -196,22 +184,17 @@ export async function logout() {
     console.log('Erro no logout do servidor (pode ser normal):', error);
   }
   
-  // Sempre limpa o token local
   await deleteToken();
   console.log('Token local removido');
 }
 
-// Função específica para forçar logout completo
 export async function forceLogoutEverywhere() {
   console.log('=== FORÇANDO LOGOUT COMPLETO ===');
   
-  // Faz logout no servidor
   await logout();
   
-  // Aguarda um pouco
   await new Promise(resolve => setTimeout(resolve, 200));
   
-  // Força limpeza local
   await deleteToken();
   
   console.log('Logout completo realizado');

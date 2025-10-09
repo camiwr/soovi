@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { forceDeleteAll, getCurrentSessionId, getToken, validateTokenUserConsistency } from '../lib/session';
 import {
@@ -12,7 +13,7 @@ import {
 type SignUpInput = {
   name: string;
   email: string;
-  password: string; // plain (vamos enviar no campo password no service)
+  password: string; 
   cpf?: string;
   phone?: string;
   type?: string;
@@ -50,7 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
       
-      // Verifica se a sessão mudou (indicando troca de usuário) APENAS se não estiver em processo de logout
       if (currentSessionId && sessionId !== currentSessionId && !forceValidation && !isLogoutInProgress) {
         console.log('Sessão alterada detectada, limpando estado...');
         setUser(null);
@@ -63,7 +63,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const u = await me();
       console.log('Usuário encontrado:', u.email);
       
-      // VALIDAÇÃO CRÍTICA: Verifica consistência token/usuário
       const isConsistent = await validateTokenUserConsistency(u.email);
       if (!isConsistent) {
         console.error('🚨 INCONSISTÊNCIA DETECTADA!');
@@ -81,7 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentSessionId(sessionId);
     } catch (error) {
       console.error('Erro ao buscar usuário:', error);
-      // Se falhar ao buscar o usuário, limpa tudo
       setUser(null);
       setCurrentSessionId(null);
       await forceDeleteAll();
@@ -89,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Checa token salvo ao abrir o app
   useEffect(() => {
     (async () => {
       try {
@@ -102,18 +99,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Session ID:', sessionId);
         
         if (token && sessionId) {
-          // Se tem token e sessão, tenta validar
           console.log('Token existente encontrado, validando...');
           await refreshMe(true);
         } else {
-          // Se não tem token ou sessão, limpa tudo
           console.log('Nenhum token/sessão, limpando tudo...');
           setUser(null);
           setCurrentSessionId(null);
           await forceDeleteAll();
         }
       } catch (error) {
-        // Se der erro, garante que o usuário seja null e tudo seja limpo
         console.warn('Erro ao validar token inicial:', error);
         setUser(null);
         setCurrentSessionId(null);
@@ -128,48 +122,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('=== INICIANDO LOGIN ===');
     console.log('Email alvo:', email);
     
-    // LIMPEZA COMPLETA E FORÇADA antes de qualquer login
     console.log('Limpando estado antes do login...');
     setUser(null);
     setCurrentSessionId(null);
     await forceDeleteAll();
     
-    // Aguarda para garantir limpeza
     await new Promise(resolve => setTimeout(resolve, 500));
     
     let tentativas = 0;
-    const maxTentativas = 5; // Aumentei para 5 tentativas
+    const maxTentativas = 5;
     
     while (tentativas < maxTentativas) {
       try {
         tentativas++;
         console.log(`=== TENTATIVA ${tentativas}/${maxTentativas} ===`);
         
-        // Limpeza extra a cada tentativa
         if (tentativas > 1) {
           console.log('Limpeza extra antes da nova tentativa...');
           await forceDeleteAll();
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Mais tempo entre tentativas
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        // Faz o login
         console.log('Executando login no servidor...');
         await loginPassword(email, password);
         
-        // Aguarda mais tempo antes de buscar dados do usuário
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Busca dados do usuário
         console.log('Buscando dados do usuário...');
         const userData = await me();
         
-        // VALIDAÇÃO RIGOROSA: O email DEVE ser exatamente igual
         if (userData.email.toLowerCase().trim() !== email.toLowerCase().trim()) {
           console.error(`🚨 TENTATIVA ${tentativas}: EMAIL INCORRETO!`);
           console.error('Email esperado:', email.toLowerCase().trim());
           console.error('Email retornado:', userData.email.toLowerCase().trim());
           
-          // Se não é a última tentativa, tenta novamente
           if (tentativas < maxTentativas) {
             console.log('Email incorreto, limpando e tentando novamente...');
             await forceDeleteAll();
@@ -179,7 +165,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
-        // Valida consistência do token também
         const isValid = await validateTokenUserConsistency(userData.email);
         
         if (!isValid) {
@@ -194,7 +179,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
-        // Se chegou até aqui, está tudo certo
         console.log('✅ Login válido confirmado');
         console.log('Email confirmado:', userData.email);
         console.log('Usuário autenticado:', userData.name);
@@ -204,12 +188,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentSessionId(newSessionId);
         
         console.log('=== LOGIN CONCLUÍDO COM SUCESSO ===');
-        return; // Sucesso, sai do loop
+        return;
         
       } catch (error: any) {
         console.error(`Erro na tentativa ${tentativas}:`, error.message);
         
-        // Limpa tudo antes da próxima tentativa
         setUser(null);
         setCurrentSessionId(null);
         await forceDeleteAll();
@@ -219,8 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error(`Login falhou após ${maxTentativas} tentativas: ${error.message}`);
         }
         
-        // Aguarda mais tempo antes da próxima tentativa
-        const waitTime = tentativas * 1000; // Aumenta o tempo a cada tentativa
+        const waitTime = tentativas * 1000;
         console.log(`Aguardando ${waitTime}ms antes da próxima tentativa...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
@@ -242,22 +224,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     console.log('=== INICIANDO LOGOUT ===');
     setIsLogoutInProgress(true);
-    
+
     try {
-      // Primeiro limpa o estado local imediatamente
+      // 1. Limpa o estado da aplicação IMEDIATAMENTE.
       setUser(null);
       setCurrentSessionId(null);
-      
-      // Força logout completo (servidor + local)
+
+      // 2. Força a limpeza completa (servidor + local)
       await forceLogoutEverywhere();
-      
-      console.log('=== LOGOUT CONCLUÍDO ===');
+
+      // 3. Redireciona para a tela de login de forma absoluta
+      router.replace('/(auth)/login');
+
+      console.log('=== LOGOUT CONCLUÍDO E REDIRECIONADO ===');
     } catch (error) {
-      // Mesmo se der erro, garante que limpa tudo
-      console.warn('Erro no logout:', error);
+      console.warn('Erro no processo de logout, garantindo limpeza local:', error);
+      // Mesmo em caso de erro, garante que o estado local e o storage sejam limpos
       setUser(null);
       setCurrentSessionId(null);
       await forceDeleteAll();
+      router.replace('/(auth)/login');
     } finally {
       setIsLogoutInProgress(false);
     }
@@ -277,7 +263,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setCurrentSessionId(null);
       
-      // Aguarda um pouco
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const token = await getToken();
