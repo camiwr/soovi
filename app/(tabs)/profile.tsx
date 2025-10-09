@@ -39,8 +39,8 @@ export default function ProfileTab() {
     }
 
     async function handleSignOut() {
+        // Apenas chama a função signOut. O redirecionamento já está embutido nela.
         await signOut();
-        router.replace('/(auth)/login');
     }
 
     return (

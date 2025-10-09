@@ -1,6 +1,6 @@
-import { Link, router } from 'expo-router';
+import { Link, router, useFocusEffect } from 'expo-router';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import { forceDeleteAll } from '../../lib/session';
 
 export default function Login() {
   const { signInPassword, user } = useAuth();
@@ -18,23 +19,25 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Limpa quando componente é montado (garantia extra)
-  useEffect(() => {
-    (async () => {
-      if (!user) {
+  // CORREÇÃO: Este hook agora só executa a limpeza quando a tela entra em foco.
+  // Removendo 'user' e 'signOut' da lista de dependências, quebramos o loop.
+  useFocusEffect(
+    useCallback(() => {
+      const cleanup = async () => {
+        // Apenas garante que o armazenamento está limpo ao chegar aqui.
+        await forceDeleteAll();
+        // Limpa os campos de input para uma nova sessão.
         setEmail('');
         setPassword('');
-      }
-    })();
-  }, []);
+      };
+      
+      cleanup();
+    }, []) // Array de dependências VAZIO é a chave da correção.
+  );
 
   useEffect(() => { 
     if (user) {
       router.replace('/(tabs)');
-    } else {
-      // Limpa os campos quando não há usuário (após logout)
-      setEmail('');
-      setPassword('');
     }
   }, [user]);
 
@@ -43,7 +46,7 @@ export default function Login() {
     try {
       setIsLoading(true);
       await signInPassword(email.trim(), password);
-      router.replace('/(tabs)');
+      // O redirecionamento já acontece no useEffect acima, que observa a mudança no 'user'.
     } catch (e: any) {
       Alert.alert('Erro', e?.message || 'Falha no login');
     } finally {
