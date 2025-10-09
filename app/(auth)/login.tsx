@@ -1,26 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
-import {
-  Alert, StyleSheet, Text, TextInput, TouchableOpacity, View,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-} from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { Link, router } from 'expo-router';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView, Platform, ScrollView,
+  StyleSheet, Text, TextInput, TouchableOpacity, View,
+} from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { deleteToken } from '../../lib/session';
 
 export default function Login() {
- const { signInPassword, user } = useAuth();
+  const { signInPassword, user } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => { if (user) router.replace('/(tabs)'); }, [user]);
+  // Limpa quando componente é montado (garantia extra)
+  useEffect(() => {
+    (async () => {
+      if (!user) {
+        setEmail('');
+        setPassword('');
+      }
+    })();
+  }, []);
 
-async function handleLogin() {
+  useEffect(() => { 
+    if (user) {
+      router.replace('/(tabs)');
+    } else {
+      // Limpa os campos quando não há usuário (após logout)
+      setEmail('');
+      setPassword('');
+    }
+  }, [user]);
+
+  async function handleLogin() {
     if (!email || !password) return Alert.alert('Campos obrigatórios', 'Preencha e-mail e senha.');
     try {
       setIsLoading(true);
@@ -45,7 +63,6 @@ async function handleLogin() {
           <View style={styles.form}>
             <View style={styles.inputContainer}>
               <View style={styles.inputWrapper}>
-                {/* Remova o componente <Mail/> se não estiver usando lucide */}
                 <Mail size={20} color="#6B7280" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
@@ -61,7 +78,6 @@ async function handleLogin() {
 
             <View style={styles.inputContainer}>
               <View style={styles.inputWrapper}>
-                {/* Remova o componente <Lock/> se não estiver usando lucide */}
                 <Lock size={20} color="#6B7280" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
@@ -72,7 +88,6 @@ async function handleLogin() {
                   placeholderTextColor="#9CA3AF"
                 />
                 <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
-                  {/* Remova os componentes Eye/EyeOff se não usar lucide */}
                   {showPassword ? <EyeOff size={20} color="#6B7280" /> : <Eye size={20} color="#6B7280" />}
                 </TouchableOpacity>
               </View>
@@ -94,7 +109,6 @@ async function handleLogin() {
 
             <View style={styles.registerSection}>
               <Text style={styles.registerPrompt}>Não tem uma conta?</Text>
-              {/* Use caminho ABSOLUTO do Expo Router para evitar confusão de pastas */}
               <Link href="/(auth)/register" asChild>
                 <TouchableOpacity>
                   <Text style={styles.registerLink}>Criar conta</Text>
@@ -135,6 +149,4 @@ const styles = StyleSheet.create({
   registerSection: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16 },
   registerPrompt: { color: '#6B7280', fontSize: 14, marginRight: 4 },
   registerLink: { color: '#3B82F6', fontSize: 14, fontWeight: '600' },
-  clearButton: { backgroundColor: '#EF4444', borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 8, marginBottom: 8 },
-  clearButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
 });
