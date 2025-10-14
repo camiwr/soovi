@@ -11,7 +11,18 @@ export default function Simulations() {
 }
 
 const s = StyleSheet.create({
-  container: { flex:1, backgroundColor:'#F8FAFC', padding:16 },
-  title: { fontSize:22, fontWeight:'800', color:'#111827', marginBottom:8 },
-  text: { color:'#6B7280' },
+  container: { 
+    flex:1, 
+    backgroundColor:'#F8FAFC', 
+    padding:16 
+  },
+  title: { 
+    fontSize:22, 
+    fontWeight:'800', 
+    color:'#111827', 
+    marginBottom:8 
+  },
+  text: { 
+    color:'#6B7280' 
+  },
 });

@@ -19,20 +19,16 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // CORREÇÃO: Este hook agora só executa a limpeza quando a tela entra em foco.
-  // Removendo 'user' e 'signOut' da lista de dependências, quebramos o loop.
   useFocusEffect(
     useCallback(() => {
       const cleanup = async () => {
-        // Apenas garante que o armazenamento está limpo ao chegar aqui.
         await forceDeleteAll();
-        // Limpa os campos de input para uma nova sessão.
         setEmail('');
         setPassword('');
       };
       
       cleanup();
-    }, []) // Array de dependências VAZIO é a chave da correção.
+    }, []) 
   );
 
   useEffect(() => { 
@@ -46,7 +42,6 @@ export default function Login() {
     try {
       setIsLoading(true);
       await signInPassword(email.trim(), password);
-      // O redirecionamento já acontece no useEffect acima, que observa a mudança no 'user'.
     } catch (e: any) {
       Alert.alert('Erro', e?.message || 'Falha no login');
     } finally {
@@ -126,30 +121,107 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  header: { alignItems: 'center', marginBottom: 48 },
-  appName: { fontSize: 32, fontWeight: 'bold', color: '#3B82F6', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#6B7280' },
-  form: { width: '100%' },
-  inputContainer: { marginBottom: 16 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F8FAFC' 
+  },
+  content: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    paddingHorizontal: 24 
+  },
+  header: { 
+    alignItems: 'center', 
+    marginBottom: 48 
+  },
+  appName: { 
+    fontSize: 32, 
+    fontWeight: 'bold', 
+    color: '#3B82F6', 
+    marginBottom: 8 
+  },
+  subtitle: { 
+    fontSize: 16, 
+    color: '#6B7280' 
+  },
+  form: { 
+    width: '100%' 
+  },
+  inputContainer: { 
+    marginBottom: 16 
+  },
   inputWrapper: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 12, paddingHorizontal: 16, paddingVertical: 4, borderWidth: 1, borderColor: '#E5E7EB',
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12, 
+    paddingHorizontal: 16, 
+    paddingVertical: 4, 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB',
   },
-  inputIcon: { marginRight: 12 },
-  input: { flex: 1, paddingVertical: 16, fontSize: 16, color: '#1F2937' },
-  eyeIcon: { padding: 4 },
-  loginButton: { backgroundColor: '#3B82F6', borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8, marginBottom: 16 },
-  loginButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  forgotPassword: { alignItems: 'center', marginBottom: 32 },
-  forgotPasswordText: { color: '#3B82F6', fontSize: 14 },
+  inputIcon: { 
+    marginRight: 12 
+  },
+  input: { 
+    flex: 1, 
+    paddingVertical: 16, 
+    fontSize: 16, 
+    color: '#1F2937' 
+  },
+  eyeIcon: { 
+    padding: 4 
+  },
+  loginButton: { 
+    backgroundColor: '#3B82F6', 
+    borderRadius: 12, 
+    paddingVertical: 16, 
+    alignItems: 'center', 
+    marginTop: 8, 
+    marginBottom: 16 
+  },
+  loginButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
+  forgotPassword: { 
+    alignItems: 'center', 
+    marginBottom: 32 
+  },
+  forgotPasswordText: { 
+    color: '#3B82F6', 
+    fontSize: 14 
+  },
   googleButton: {
-    backgroundColor: '#DB4437', borderRadius: 12, paddingVertical: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16,
+    backgroundColor: '#DB4437', 
+    borderRadius: 12, 
+    paddingVertical: 16,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 16,
   },
-  googleButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', marginLeft: 8 },
-  registerSection: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16 },
-  registerPrompt: { color: '#6B7280', fontSize: 14, marginRight: 4 },
-  registerLink: { color: '#3B82F6', fontSize: 14, fontWeight: '600' },
+  googleButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontWeight: '600', 
+    marginLeft: 8 
+  },
+  registerSection: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginTop: 16 
+  },
+  registerPrompt: { 
+    color: '#6B7280', 
+    fontSize: 14, 
+    marginRight: 4 
+  },
+  registerLink: { 
+    color: '#3B82F6', 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
 });

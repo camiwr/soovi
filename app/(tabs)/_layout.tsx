@@ -1,32 +1,43 @@
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
+import { CalculatorIcon, HomeIcon, MapIcon, UserIcon } from 'lucide-react-native';
 
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+
 
 export default function TabLayout() {
   return (
-    <Tabs screenOptions={{ headerTitleAlign: 'center' }}>
+    <Tabs
+      screenOptions={{
+        headerTitleAlign: 'center',
+      }}
+    >
       <Tabs.Screen
-        name="index"
-        options={{ title: 'Home' }}
+      name="index"
+      options={{
+        title: 'Home',
+        tabBarIcon: ({ color, size }) => <HomeIcon color={color} size={size} />,
+      }}
       />
       <Tabs.Screen
-        name="simulations"
-        options={{ title: 'Simulações' }}
+      name="simulations"
+      options={{
+        title: 'Simulações',
+        tabBarIcon: ({ color, size }) => <CalculatorIcon color={color} size={size} />,
+      }}
       />
       <Tabs.Screen
-        name="areas"
-        options={{ title: 'Áreas' }}
+      name="areas"
+      options={{
+        title: 'Áreas',
+        tabBarIcon: ({ color, size }) => <MapIcon color={color} size={size} />,
+      }}
       />
       <Tabs.Screen
-        name="profile"
-        options={{ title: 'Perfil' }}
+      name="profile"
+      options={{
+        title: 'Perfil',
+        tabBarIcon: ({ color, size }) => <UserIcon color={color} size={size} />,
+      }}
       />
     </Tabs>
   );

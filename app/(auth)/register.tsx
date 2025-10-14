@@ -139,22 +139,81 @@ export default function Register() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  header: { alignItems: 'center', marginBottom: 48 },
-  appName: { fontSize: 32, fontWeight: 'bold', color: '#3B82F6', marginBottom: 8 },
-  subtitle: { fontSize: 16, color: '#6B7280' },
-  form: { width: '100%' },
-  inputContainer: { marginBottom: 16 },
-  inputWrapper: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 12, paddingHorizontal: 16, paddingVertical: 4, borderWidth: 1, borderColor: '#E5E7EB',
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F8FAFC' 
   },
-  inputIcon: { marginRight: 12 },
-  input: { flex: 1, paddingVertical: 16, fontSize: 16, color: '#1F2937' },
-  loginButton: { backgroundColor: '#3B82F6', borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginTop: 8, marginBottom: 16 },
-  loginButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  registerSection: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16 },
-  registerPrompt: { color: '#6B7280', fontSize: 14, marginRight: 4 },
-  registerLink: { color: '#3B82F6', fontSize: 14, fontWeight: '600' },
+  content: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    paddingHorizontal: 24 
+  },
+  header: { 
+    alignItems: 'center', 
+    marginBottom: 48 
+  },
+  appName: { 
+    fontSize: 32, 
+    fontWeight: 'bold', 
+    color: '#3B82F6', 
+    marginBottom: 8 
+  },
+  subtitle: { 
+    fontSize: 16, 
+    color: '#6B7280' 
+  },
+  form: { 
+    width: '100%' 
+  },
+  inputContainer: { 
+    marginBottom: 16 
+  },
+  inputWrapper: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12, 
+    paddingHorizontal: 16, 
+    paddingVertical: 4, 
+    borderWidth: 1, 
+    borderColor: '#E5E7EB',
+  },
+  inputIcon: { 
+    marginRight: 12 
+  },
+  input: { 
+    flex: 1, 
+    paddingVertical: 16, 
+    fontSize: 16, 
+    color: '#1F2937' 
+  },
+  loginButton: { 
+    backgroundColor: '#3B82F6', 
+    borderRadius: 12, 
+    paddingVertical: 16, 
+    alignItems: 'center', 
+    marginTop: 8, 
+    marginBottom: 16 
+  },
+  loginButtonText: { 
+    color: '#FFFFFF', 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
+  registerSection: { 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginTop: 16 
+  },
+  registerPrompt: { 
+    color: '#6B7280', 
+    fontSize: 14, 
+    marginRight: 4 
+  },
+  registerLink: { 
+    color: '#3B82F6', 
+    fontSize: 14, 
+    fontWeight: '600' 
+  },
 });

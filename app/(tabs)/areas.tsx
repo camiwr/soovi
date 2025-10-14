@@ -31,27 +31,13 @@ export default function AreasScreen() {
       setLoading(true);
       console.log('Carregando áreas para usuário:', user.id);
 
-      const token = await getToken();
-      console.log('Token presente:', !!token);
-      if (token) {
-        console.log('Token preview:', token.substring(0, 20) + '...');
-      }
-
       const data = await searchAreas({
         owner_id: user.id,
         limit: 50,
         page: 1
       });
 
-      console.log('Resposta da API - Tipo:', typeof data);
-      console.log('Resposta da API - Total de áreas na resposta:', data.total || 0);
-
       const realAreas = Array.isArray(data.areas) ? data.areas : [];
-      console.log('Áreas extraídas:', realAreas.length);
-
-      if (realAreas.length > 0) {
-        console.log('Primeira área:', JSON.stringify(realAreas[0], null, 2));
-      }
 
       const sortedAreas = realAreas.sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
@@ -67,13 +53,9 @@ export default function AreasScreen() {
       if (e?.statusCode === 403 || e?.status === 403 || e?.message === 'INVALID_TOKEN') {
         show('🔐 Sessão Expirada', 'Sua sessão expirou. Por favor, faça login novamente.', 'error');
         await signOut();
-        router.replace('/(auth)/login');
-        setAreas([]);
-        setLoading(false);
         return;
       }
-
-      // Para outros erros, mostra mensagem genérica
+      
       if (e?.message && !e?.message.includes('404') && !e?.message.includes('Network')) {
         Alert.alert(
           'Erro ao carregar áreas',
@@ -82,12 +64,11 @@ export default function AreasScreen() {
         );
       }
 
-      // Em caso de erro, define array vazio (sem áreas)
       setAreas([]);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, signOut, show]);
 
 
   useEffect(() => { load(); }, [load]);
@@ -122,7 +103,7 @@ export default function AreasScreen() {
     if (!selected) return;
     try {
       await updateArea(selected.id, {
-        owner_id: selected.owner_id,                               // <- obrigatório p/ autorização
+        owner_id: selected.owner_id,
         description: form.description,
         registration_number: form.registration_number,
         total_area_hectare: form.total_area_hectare,
@@ -137,40 +118,39 @@ export default function AreasScreen() {
     }
   }
 
+  // --- CORREÇÃO APLICADA AQUI ---
   function handleDelete() {
-    if (!selected) {
-      console.log('handleDelete: Nenhuma área selecionada');
-      return;
-    }
-    const area = selected;
-    console.log('handleDelete: Área selecionada para exclusão:', area);
-    setSelected(null); // fecha o modal primeiro
-    setTimeout(() => {
-      console.log('handleDelete: Abrindo confirmação de exclusão');
-      confirm({
-        title: 'Remover área?',
-        message: 'Essa ação não pode ser desfeita.',
-        confirmText: 'Remover',
-        onConfirm: async () => {
-          console.log('handleDelete: Confirmação recebida, excluindo área:', area.id);
-          try {
-            await deleteArea(area.id);
-            console.log('handleDelete: Área excluída com sucesso');
-            show('Removida', 'A área foi excluída.', 'success');
-            load();
-          } catch (e: any) {
-            console.log('handleDelete: Erro ao excluir área:', e?.message || e);
-            show('Erro', e?.message || 'Falha ao deletar', 'error');
-          }
-        },
-      });
-    }, 30);
+    if (!selected) return;
+
+    // Captura a área selecionada em uma variável local
+    const areaToDelete = selected;
+
+    // Abre o diálogo de confirmação
+    confirm({
+      title: 'Remover área?',
+      message: `Você tem certeza que deseja remover "${areaToDelete.description}"? Essa ação não pode ser desfeita.`,
+      confirmText: 'Remover',
+      onConfirm: async () => {
+        try {
+          // Chama a API para deletar
+          await deleteArea(areaToDelete.id);
+          show('Removida', 'A área foi excluída com sucesso.', 'success');
+          
+          // Apenas fecha o modal e recarrega a lista APÓS o sucesso
+          setSelected(null);
+          load();
+        } catch (e: any) {
+          console.error('handleDelete: Erro ao excluir área:', e?.message || e);
+          show('Erro', e?.message || 'Falha ao deletar', 'error');
+          // Se der erro, o modal permanece aberto para o usuário tentar novamente
+        }
+      },
+    });
   }
 
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-      {/* Header centralizado com botão de adicionar */}
       <View style={s.header}>
         <View style={s.headerContent}>
           <Text style={s.h1}>Minhas Áreas</Text>
@@ -236,7 +216,6 @@ export default function AreasScreen() {
         )}
       </ScrollView>
 
-      {/* Modal de visualizar/editar */}
       <Modal visible={!!selected} animationType="slide" onRequestClose={() => setSelected(null)}>
         <View style={s.modalContainer}>
           <View style={s.modalHeader}>
