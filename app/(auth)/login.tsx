@@ -1,6 +1,6 @@
-import { Link, router, useFocusEffect } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { forceDeleteAll } from '../../lib/session';
 
 export default function Login() {
   const { signInPassword, user } = useAuth();
@@ -19,31 +18,21 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      const cleanup = async () => {
-        await forceDeleteAll();
-        setEmail('');
-        setPassword('');
-      };
-      
-      cleanup();
-    }, []) 
-  );
-
-  useEffect(() => { 
+  useEffect(() => {
     if (user) {
       router.replace('/(tabs)');
     }
   }, [user]);
 
   async function handleLogin() {
-    if (!email || !password) return Alert.alert('Campos obrigatórios', 'Preencha e-mail e senha.');
+    if (!email || !password) {
+      return Alert.alert('Campos obrigatórios', 'Preencha e-mail e senha.');
+    }
     try {
       setIsLoading(true);
-      await signInPassword(email.trim(), password);
+      await signInPassword(email, password);
     } catch (e: any) {
-      Alert.alert('Erro', e?.message || 'Falha no login');
+      Alert.alert('Erro no Login', e?.message || 'Falha ao tentar entrar.');
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +43,7 @@ export default function Login() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.appName}>soolu</Text>
+            <Text style={styles.appName}>soovi</Text>
             <Text style={styles.subtitle}>Bem-vindo de volta</Text>
           </View>
 
@@ -94,17 +83,7 @@ export default function Login() {
             <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
               {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.loginButtonText}>Entrar</Text>}
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.forgotPassword} onPress={() => Alert.alert('Recuperar senha', 'A implementar')}>
-              <Text style={styles.forgotPasswordText}>Esqueci a senha</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.googleButton}
-              onPress={() => Alert.alert('Login com Google', 'Funcionalidade a ser implementada')}>
-              <Text style={styles.googleButtonText}>Login com Google</Text>
-            </TouchableOpacity>
-
+            
             <View style={styles.registerSection}>
               <Text style={styles.registerPrompt}>Não tem uma conta?</Text>
               <Link href="/(auth)/register" asChild>
@@ -120,6 +99,7 @@ export default function Login() {
   );
 }
 
+// ... Seus estilos permanecem os mesmos ...
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 

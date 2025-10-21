@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "soolu",
-    "slug": "soolu",
+    "name": "soovi",
+    "slug": "soovi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "soolu",
+    "scheme": "soovi",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
