@@ -4,6 +4,7 @@ import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpac
 import { useAuth } from '../../context/AuthContext';
 import { isPhone, onlyDigits } from '../../lib/format';
 
+
 export default function ProfileTab() {
     const { user, updateProfile, signOut } = useAuth();
     if (!user) return (
@@ -16,7 +17,6 @@ export default function ProfileTab() {
     const [phone, setPhone] = useState(user.phone || '');
     const [saving, setSaving] = useState(false);
 
-    // Extrai as iniciais do nome para o avatar
     const getInitials = (fullName: string) => {
         return fullName
             .split(' ')
@@ -39,7 +39,6 @@ export default function ProfileTab() {
     }
 
     async function handleSignOut() {
-        // Apenas chama a função signOut. O redirecionamento já está embutido nela.
         await signOut();
     }
 

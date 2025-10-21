@@ -1,217 +1,56 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const ACCESS_KEY = 'user_token';
-const SESSION_KEY = 'session_id';
+const ACCESS_KEY = 'user_access_token';
+const REFRESH_KEY = 'user_refresh_token';
 
-// Gera um ID único para cada sessão
-function generateSessionId(): string {
-  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
 
-export async function saveToken(token: string) {
-  try {
-    console.log('=== SALVANDO NOVO TOKEN ===');
-    
-    // Primeiro, limpa TUDO antes de salvar novo token
-    await forceDeleteAll();
-    
-    // Aguarda um pouco para garantir limpeza
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Gera um novo ID de sessão para isolar completamente
-    const sessionId = generateSessionId();
-    const timestamp = Date.now().toString();
-    
-    if (Platform.OS === 'web') {
-      window.localStorage.setItem(ACCESS_KEY, token);
-      window.localStorage.setItem(SESSION_KEY, sessionId);
-      window.localStorage.setItem('token_timestamp', timestamp);
-    } else {
-      await SecureStore.setItemAsync(ACCESS_KEY, token);
-      await SecureStore.setItemAsync(SESSION_KEY, sessionId);
-      await SecureStore.setItemAsync('token_timestamp', timestamp);
-    }
-    console.log('Nova sessão criada:', sessionId, 'em', new Date().toISOString());
-    console.log('Token salvo (primeiros 20 chars):', token.substring(0, 20) + '...');
-  } catch (error) {
-    console.error('Erro ao salvar token:', error);
-    throw error;
-  }
-}
-
-export async function getToken(): Promise<string | null> {
-  try {
-    let token;
-    if (Platform.OS === 'web') {
-      token = window.localStorage.getItem(ACCESS_KEY);
-    } else {
-      token = await SecureStore.getItemAsync(ACCESS_KEY);
-    }
-    
-    if (token) {
-      console.log('Token encontrado (primeiros 20 chars):', token.substring(0, 20) + '...');
-    } else {
-      console.log('Nenhum token encontrado');
-    }
-    
-    return token;
-  } catch (error) {
-    console.error('Erro ao buscar token:', error);
-    return null;
-  }
-}
-
-export async function getCurrentSessionId(): Promise<string | null> {
+export async function saveTokens(accessToken: string, refreshToken: string) {
   try {
     if (Platform.OS === 'web') {
-      return window.localStorage.getItem(SESSION_KEY);
+      window.localStorage.setItem(ACCESS_KEY, accessToken);
+      window.localStorage.setItem(REFRESH_KEY, refreshToken);
     } else {
-      return await SecureStore.getItemAsync(SESSION_KEY);
+      await SecureStore.setItemAsync(ACCESS_KEY, accessToken);
+      await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
     }
+    console.log('Tokens salvos com sucesso.');
   } catch (error) {
-    console.error('Erro ao buscar session ID:', error);
-    return null;
+    console.error('Erro ao salvar os tokens:', error);
+    throw new Error('Não foi possível salvar a sessão do usuário.');
   }
 }
 
-// Força a limpeza COMPLETA de todos os dados de sessão
-export async function forceDeleteAll() {
-  try {
-    console.log('🧹 Iniciando limpeza completa...');
-    
-    if (Platform.OS === 'web') {
-      // Limpa TODAS as chaves relacionadas ao app
-      const keysToRemove = [ACCESS_KEY, SESSION_KEY, 'token_timestamp'];
-      keysToRemove.forEach(key => {
-        try {
-          window.localStorage.removeItem(key);
-        } catch {}
-      });
-      
-      // Força limpeza de possíveis outras chaves antigas
-      const storage = window.localStorage;
-      for (let i = storage.length - 1; i >= 0; i--) {
-        const key = storage.key(i);
-        if (key && (key.includes('user') || key.includes('token') || key.includes('session') || key.includes('auth'))) {
-          try {
-            storage.removeItem(key);
-            console.log('Removido:', key);
-          } catch {}
-        }
-      }
-    } else {
-      // Limpa SecureStore
-      const keysToRemove = [ACCESS_KEY, SESSION_KEY, 'token_timestamp'];
-      for (const key of keysToRemove) {
-        try {
-          await SecureStore.deleteItemAsync(key);
-          console.log('Removido do SecureStore:', key);
-        } catch {}
-      }
-    }
-    
-    // Verifica se realmente foi limpo
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    const tokenCheck = await getToken();
-    if (tokenCheck) {
-      console.error('⚠️ Token ainda existe após limpeza! Forçando remoção...');
-      // Força novamente
-      if (Platform.OS === 'web') {
-        window.localStorage.clear();
-      } else {
-        try {
-          await SecureStore.deleteItemAsync(ACCESS_KEY);
-        } catch {}
-      }
-    }
-    
-    console.log('✅ Limpeza completa de sessão executada em', new Date().toISOString());
-  } catch (error) {
-    console.error('Erro na limpeza completa:', error);
-  }
-}
-
-export async function deleteToken() {
-  await forceDeleteAll();
-}
-
-// Função para debugar o estado atual do storage
-export async function debugStorage() {
-  console.log('=== DEBUG STORAGE ===');
+export async function getTokens(): Promise<{ accessToken: string | null; refreshToken: string | null }> {
   try {
     if (Platform.OS === 'web') {
-      console.log('LocalStorage contents:');
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const key = window.localStorage.key(i);
-        if (key) {
-          const value = window.localStorage.getItem(key);
-          console.log(`${key}: ${value}`);
-        }
-      }
+      return {
+        accessToken: window.localStorage.getItem(ACCESS_KEY),
+        refreshToken: window.localStorage.getItem(REFRESH_KEY),
+      };
     } else {
-      console.log('SecureStore - checking known keys:');
-      const keys = [ACCESS_KEY, SESSION_KEY, 'token_timestamp'];
-      for (const key of keys) {
-        try {
-          const value = await SecureStore.getItemAsync(key);
-          console.log(`${key}: ${value || 'null'}`);
-        } catch (e) {
-          console.log(`${key}: error reading`);
-        }
-      }
+      const accessToken = await SecureStore.getItemAsync(ACCESS_KEY);
+      const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
+      return { accessToken, refreshToken };
     }
   } catch (error) {
-    console.error('Erro no debug storage:', error);
-  }
-  console.log('=== FIM DEBUG STORAGE ===');
-}
-
-// Valida se o token e usuário são consistentes
-export async function validateTokenUserConsistency(userEmail: string): Promise<boolean> {
-  try {
-    const token = await getToken();
-    if (!token) return false;
-    
-    const tokenParts = token.split('.');
-    if (tokenParts.length !== 3) return false;
-    
-    const payload = JSON.parse(atob(tokenParts[1]));
-    const tokenEmail = payload.email;
-    
-    console.log('Validação token/usuário:');
-    console.log('Email do usuário:', userEmail);
-    console.log('Email no token:', tokenEmail);
-    
-    const isValid = tokenEmail?.toLowerCase().trim() === userEmail?.toLowerCase().trim();
-    
-    if (!isValid) {
-      console.error('🚨 INCONSISTÊNCIA DETECTADA NA VALIDAÇÃO!');
-      console.error('Token email:', tokenEmail);
-      console.error('User email:', userEmail);
-    }
-    
-    return isValid;
-  } catch (error) {
-    console.error('Erro na validação token/usuário:', error);
-    return false;
+    console.error('Erro ao buscar os tokens:', error);
+    return { accessToken: null, refreshToken: null };
   }
 }
 
-// Nova função para extrair email do token sem validar
-export async function getEmailFromToken(): Promise<string | null> {
+export async function deleteTokens() {
   try {
-    const token = await getToken();
-    if (!token) return null;
-    
-    const tokenParts = token.split('.');
-    if (tokenParts.length !== 3) return null;
-    
-    const payload = JSON.parse(atob(tokenParts[1]));
-    return payload.email || null;
+    if (Platform.OS === 'web') {
+      window.localStorage.removeItem(ACCESS_KEY);
+      window.localStorage.removeItem(REFRESH_KEY);
+    } else {
+      await SecureStore.deleteItemAsync(ACCESS_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_KEY);
+    }
+    console.log('Tokens removidos com sucesso.');
   } catch (error) {
-    console.error('Erro ao extrair email do token:', error);
-    return null;
+    console.error('Erro ao apagar os tokens:', error);
+    throw new Error('Não foi possível finalizar a sessão local.');
   }
 }

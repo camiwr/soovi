@@ -4,8 +4,8 @@ import { Alert, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, 
 import { useConfirm } from '../../components/UI/ConfirmDialog';
 import { useToast } from '../../components/UI/Toast';
 import { useAuth } from '../../context/AuthContext';
-import { getToken } from '../../lib/session';
-import { Area, deleteArea, getArea, searchAreas, updateArea } from '../../services/areas';
+import { deleteArea, getArea, searchAreas, updateArea } from '../../services/areas';
+import { Area } from '../../types/areas'; // <-- ATUALIZADO
 
 export default function AreasScreen() {
   const { user, signOut } = useAuth();
@@ -21,63 +21,26 @@ export default function AreasScreen() {
 
   const load = useCallback(async () => {
     if (!user?.id) {
-      console.log('Usuário não autenticado');
       setAreas([]);
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
-      console.log('Carregando áreas para usuário:', user.id);
-
-      const data = await searchAreas({
-        owner_id: user.id,
-        limit: 50,
-        page: 1
-      });
-
-      const realAreas = Array.isArray(data.areas) ? data.areas : [];
-
-      const sortedAreas = realAreas.sort((a, b) => {
-        const dateA = new Date(a.created_at).getTime();
-        const dateB = new Date(b.created_at).getTime();
-        return dateB - dateA;
-      });
-
+      const data = await searchAreas({ owner_id: user.id, limit: 50, page: 1 });
+      const sortedAreas = (data.areas || []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setAreas(sortedAreas);
-
     } catch (e: any) {
       console.log('AREAS SEARCH ERROR:', e?.data || e?.message || e);
-
-      if (e?.statusCode === 403 || e?.status === 403 || e?.message === 'INVALID_TOKEN') {
-        show('🔐 Sessão Expirada', 'Sua sessão expirou. Por favor, faça login novamente.', 'error');
-        await signOut();
-        return;
-      }
-      
-      if (e?.message && !e?.message.includes('404') && !e?.message.includes('Network')) {
-        Alert.alert(
-          'Erro ao carregar áreas',
-          'Não foi possível carregar suas áreas. Verifique sua conexão e tente novamente.',
-          [{ text: 'OK' }]
-        );
-      }
-
+      show('Erro', 'Não foi possível carregar suas áreas.', 'error');
       setAreas([]);
     } finally {
       setLoading(false);
     }
-  }, [user?.id, signOut, show]);
+  }, [user?.id, show]);
 
 
-  useEffect(() => { load(); }, [load]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -103,7 +66,6 @@ export default function AreasScreen() {
     if (!selected) return;
     try {
       await updateArea(selected.id, {
-        owner_id: selected.owner_id,
         description: form.description,
         registration_number: form.registration_number,
         total_area_hectare: form.total_area_hectare,
@@ -117,37 +79,26 @@ export default function AreasScreen() {
       show('Erro', e?.message || 'Falha ao atualizar', 'error');
     }
   }
-
-  // --- CORREÇÃO APLICADA AQUI ---
+  
   function handleDelete() {
     if (!selected) return;
-
-    // Captura a área selecionada em uma variável local
     const areaToDelete = selected;
-
-    // Abre o diálogo de confirmação
     confirm({
       title: 'Remover área?',
       message: `Você tem certeza que deseja remover "${areaToDelete.description}"? Essa ação não pode ser desfeita.`,
       confirmText: 'Remover',
       onConfirm: async () => {
         try {
-          // Chama a API para deletar
           await deleteArea(areaToDelete.id);
           show('Removida', 'A área foi excluída com sucesso.', 'success');
-          
-          // Apenas fecha o modal e recarrega a lista APÓS o sucesso
           setSelected(null);
           load();
         } catch (e: any) {
-          console.error('handleDelete: Erro ao excluir área:', e?.message || e);
           show('Erro', e?.message || 'Falha ao deletar', 'error');
-          // Se der erro, o modal permanece aberto para o usuário tentar novamente
         }
       },
     });
   }
-
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>

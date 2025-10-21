@@ -5,3 +5,6 @@ export const isPhone = (v: string) => {
   const d = onlyDigits(v);
   return d.length >= 10 && d.length <= 11;
 };
+
+
+const CPF_REGEX = /^(\d{3})\.(\d{3})\.(\d{3})-(\d{2})$/;
