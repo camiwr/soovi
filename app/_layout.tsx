@@ -6,10 +6,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider } from '../context/AuthContext';
-import { useColorScheme } from '@/components/useColorScheme';
-import { ToastProvider } from '../components/UI/Toast';
-import { ConfirmProvider } from '../components/UI/ConfirmDialog';
-
+import Toast from "react-native-toast-message";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "../lib/queryClient";
 
 export const unstable_settings = {
   initialRouteName: 'index',
@@ -41,12 +40,9 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <ToastProvider>
-        <ConfirmProvider>
+        <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <Stack>
               <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -54,9 +50,8 @@ function RootLayoutNav() {
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             </Stack>
+            <Toast/>
           </AuthProvider>
-        </ConfirmProvider>
-      </ToastProvider>
-    </ThemeProvider>
+        </QueryClientProvider>
   );
 }
