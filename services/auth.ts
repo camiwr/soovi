@@ -1,75 +1,38 @@
-import { request } from '../lib/http';
-import { deleteTokens, getTokens, saveTokens } from '../lib/session';
-import { User, SignUpInput } from '../types/auth'; 
+import axios from "axios";
+import { api } from "./client";
 
-type LoginResponse = {
-  access_token: string;
-  refresh_token: string; 
-};
+const API_URL = process.env.EXPO_PUBLIC_API_URL!;
 
+export async function loginPassword(payload: { email: string; password: string }) {
+  const { data } = await api.post("/auth/login-password", payload);
+  return data;
+}
 
-export async function loginPassword(email: string, password: string): Promise<void> {
-  console.log('Executando login no servidor para:', email);
+export async function createUser(payload: {
+  name: string;
+  email: string;
+  cpf?: string;
+  phone?: string | null;
+  password?: string;
+}) {
+  const { data } = await api.post("/auth/create-user", payload);
+  return data;
+}
 
-  const data = await request<LoginResponse>('/auth/login-password', { // Sem cache buster aqui, confiamos na correção do backend ou no fluxo de refresh
-    method: 'POST',
-    body: {
-      email: email.trim(),
-      password: password,
+export async function getMe() {
+  const { data } = await api.get("/users/me");
+  return data?.user ?? data;
+}
+
+export async function safeGetMe(accessToken: string) {
+  const now = Date.now();
+  const { data } = await axios.get(`${API_URL}/users/me?_=${now}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     },
   });
-
-  if (!data?.access_token || !data?.refresh_token) {
-    throw new Error('Resposta de login incompleta do servidor (access ou refresh token faltando).');
-  }
-
-  await saveTokens(data.access_token, data.refresh_token);
-}
-
-export async function refreshToken(): Promise<void> {
-  const tokens = await getTokens();
-  const currentRefreshToken = tokens.refreshToken;
-
-  if (!currentRefreshToken) {
-    console.warn('Tentativa de refresh sem refresh token.');
-    throw new Error('Sessão inválida para renovação.'); // Erro específico para logout
-  }
-
-  console.log('Tentando atualizar tokens usando o refresh token...');
-  const data = await request<LoginResponse>('/auth/refresh-token', {
-    method: 'POST',
-    body: {
-      refresh_token: currentRefreshToken,
-    },
-  });
-
-  if (!data?.access_token || !data?.refresh_token) {
-    throw new Error('Resposta de refresh token inválida do servidor.');
-  }
-
-  await saveTokens(data.access_token, data.refresh_token);
-  console.log('Tokens atualizados com sucesso via refresh.');
-}
-
-export async function createUser(input: SignUpInput) {
-  return request('/auth/create-user', {
-    method: 'POST',
-    body: input,
-  });
-}
-
-
-export async function me(): Promise<User> {
-  return request<User>('/users/me', { auth: true });
-}
-
-
-export async function updateUser(id: string, payload: Partial<Pick<User, 'name' | 'phone'>>) {
-  return request<User>(`/users/${id}`, { method: 'PATCH', body: payload, auth: true });
-}
-
-
-export async function logout() {
-  console.log('Executando logout local.');
-  await deleteTokens();
+  return data?.user ?? data;
 }
