@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { createArea } from '../../services/areas';
+// import { createArea } from '../../services/areas';
 import { useAuth } from '../../context/AuthContext';   
 import { useToast } from '../../components/UI/Toast';
 
@@ -34,7 +34,7 @@ export default function CreateArea() {
       };
 
       console.log('POST /area', body);
-      await createArea(body);
+      // await createArea(body);
       show('Sucesso', 'Área cadastrada', 'success');
       router.back(); 
     } catch (e: any) {

@@ -1,68 +1,62 @@
-import { router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { request } from '../../lib/http';
+import React, { useEffect, useMemo, useState } from "react";
+import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { router } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
 
-// tipo opcional p/ atividades
 type Activity = {
   id: string;
-  type: 'simulation' | 'area';
+  type: "simulation" | "area";
   title: string;
   created_at: string; // ISO
 };
 
-// tenta buscar de /activities; se não existir, retorna []
-async function fetchActivities(): Promise<Activity[]> {
-  try {
-    const data = await request<Activity[]>('/activities', { auth: true });
-    // normalização mínima: garanta campos
-    return (Array.isArray(data) ? data : []).slice(0, 5);
-  } catch {
-    return []; // sem ruído se o back ainda não tiver isso
-  }
-}
-
-export default function Home() {
+export default function HomeScreen() {
   const { user } = useAuth();
-  const firstName = useMemo(() => (user?.name || '').split(' ')[0] || 'Usuário', [user?.name]);
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activities, setActivities] = useState<Activity[]>([]);
 
+  const firstName = useMemo(() => {
+    const base = user?.name || user?.email || "Usuário";
+    const chunk = base.split(" ")[0];
+    return chunk.replace(/@.*/, "");
+  }, [user]);
+
+  // TODO: Trocar por fetch real quando os endpoints de atividades forem definidos
   useEffect(() => {
+    let isMounted = true;
     (async () => {
-      setLoading(true);
-      const list = await fetchActivities();
-      setActivities(list);
-      setLoading(false);
+      try {
+        // Exemplo mock: substitua por chamada real quando tiver a rota
+        const mock: Activity[] = [];
+        if (isMounted) setActivities(mock);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     })();
+    return () => { isMounted = false; };
   }, []);
 
-  function handleNewSimulation() {
-    Alert.alert('Nova Simulação', 'Tela de criação de simulação em breve.');
-  }
+  const handleNovaArea = () => {
+    router.push("/areas/create"); // ajuste a rota real quando existir
+  };
 
-  function handleNovaArea() {
-    router.push('/areas/create');
-  }
-
-  function handleMyAreas() {
-    router.push('/(tabs)/areas');
-  }
+  const handleMyAreas = () => {
+    router.push("/areas"); // ajuste a rota real quando existir
+  };
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 24, alignItems: 'center' }}>
+    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 24, alignItems: "center" }}>
       <Text style={s.h1}>Olá, {firstName}!</Text>
       <Text style={s.subtitle}>O que você gostaria de fazer hoje?</Text>
 
-      <TouchableOpacity style={s.bigCard} onPress={handleNovaArea}>
+      <TouchableOpacity style={s.bigCard} onPress={handleNovaArea} activeOpacity={0.9}>
         <View style={s.plusCircle}><Text style={s.plusText}>＋</Text></View>
         <Text style={s.bigTitle}>Nova Área</Text>
         <Text style={s.bigDesc}>Criar uma nova área</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={s.card} onPress={handleMyAreas}>
-        <View style={s.iconCircle}><Text style={{fontSize:18}}>📍</Text></View>
+      <TouchableOpacity style={s.card} onPress={handleMyAreas} activeOpacity={0.9}>
+        <View style={s.iconCircle}><Text style={{ fontSize: 18 }}>📍</Text></View>
         <View style={{ flex: 1 }}>
           <Text style={s.cardTitle}>Minhas Áreas</Text>
           <Text style={s.cardDesc}>Visualizar áreas cadastradas</Text>
@@ -76,11 +70,11 @@ export default function Home() {
       ) : activities.length === 0 ? (
         <Text style={s.muted}>Sem atividades recentes.</Text>
       ) : (
-        <View style={{ gap: 12, width: '100%' }}>
+        <View style={{ gap: 12, width: "100%" }}>
           {activities.map((a) => (
             <View key={a.id} style={s.activityItem}>
               <View style={s.activityIcon}>
-                <Text style={{ fontSize:16 }}>{a.type === 'simulation' ? '📊' : '🗺️'}</Text>
+                <Text style={{ fontSize: 16 }}>{a.type === "simulation" ? "📊" : "🗺️"}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.activityTitle}>{a.title}</Text>
@@ -98,50 +92,54 @@ function formatRelative(iso: string) {
   const d = new Date(iso);
   const diffMs = Date.now() - d.getTime();
   const diffDays = Math.floor(diffMs / 86400000);
-  if (diffDays <= 0) return 'Hoje';
-  if (diffDays === 1) return 'Ontem';
+  if (diffDays <= 0) return "Hoje";
+  if (diffDays === 1) return "Ontem";
   return `Há ${diffDays} dias`;
 }
 
 const s = StyleSheet.create({
-  container: { flex:1, backgroundColor:'#F8FAFC', padding:16 },
-  h1: { fontSize:28, fontWeight:'800', color:'#0F172A', marginTop:8, textAlign:'center' },
-  subtitle: { fontSize:16, color:'#64748B', marginBottom:16, textAlign:'center' },
+  container: { flex: 1, paddingTop: 28, paddingHorizontal: 20, backgroundColor: "#F9FAFB" },
+  h1: { fontSize: 24, fontWeight: "800", color: "#111827", width: "100%" },
+  subtitle: { marginTop: 6, fontSize: 14, color: "#6B7280", width: "100%", marginBottom: 20 },
 
   bigCard: {
-    backgroundColor:'#3B82F6', borderRadius:16, padding:20,
-    alignItems:'center', justifyContent:'center', gap:8, marginBottom:16, width:'100%'
+    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 16, padding: 18,
+    alignItems: "flex-start", marginBottom: 14, borderWidth: 1, borderColor: "#E5E7EB",
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
   plusCircle: {
-    width:54, height:54, borderRadius:27, backgroundColor:'#60A5FA33',
-    alignItems:'center', justifyContent:'center', marginBottom:8
+    width: 44, height: 44, borderRadius: 22, backgroundColor: "#EEF2FF",
+    alignItems: "center", justifyContent: "center", marginBottom: 10,
   },
-  plusText: { color:'#fff', fontSize:30, lineHeight:30 },
-  bigTitle: { color:'#fff', fontSize:20, fontWeight:'800', textAlign:'center' },
-  bigDesc: { color:'#E0F2FE', textAlign:'center' },
+  plusText: { fontSize: 28, color: "#3730A3", lineHeight: 28 },
+  bigTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  bigDesc: { fontSize: 13, color: "#6B7280", marginTop: 4 },
 
   card: {
-    backgroundColor:'#FFFFFF', borderRadius:16, padding:16,
-    borderWidth:1, borderColor:'#E5E7EB', flexDirection:'row', gap:12, alignItems:'center', width:'100%'
+    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14,
+    flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20,
+    borderWidth: 1, borderColor: "#E5E7EB",
   },
   iconCircle: {
-    width:44, height:44, borderRadius:22, backgroundColor:'#F1F5F9',
-    alignItems:'center', justifyContent:'center'
+    width: 40, height: 40, borderRadius: 20, backgroundColor: "#ECFEFF",
+    alignItems: "center", justifyContent: "center",
   },
-  cardTitle: { fontSize:18, fontWeight:'700', color:'#111827', textAlign:'center' },
-  cardDesc: { color:'#6B7280', textAlign:'center' },
+  cardTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  cardDesc: { fontSize: 13, color: "#6B7280", marginTop: 2 },
 
-  sectionTitle: { fontSize:20, fontWeight:'800', color:'#111827', marginTop:24, marginBottom:8, textAlign:'center' },
-  muted: { color:'#6B7280', textAlign:'center' },
+  sectionTitle: {
+    width: "100%", fontSize: 16, fontWeight: "700", color: "#111827", marginBottom: 8,
+  },
+  muted: { width: "100%", color: "#6B7280", fontSize: 13 },
 
   activityItem: {
-    backgroundColor:'#FFFFFF', borderRadius:16, padding:14,
-    borderWidth:1, borderColor:'#E5E7EB', flexDirection:'row', gap:12, alignItems:'center'
+    flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FFF",
+    borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 12, padding: 12,
   },
   activityIcon: {
-    width:36, height:36, borderRadius:18, backgroundColor:'#F1F5F9',
-    alignItems:'center', justifyContent:'center'
+    width: 36, height: 36, borderRadius: 18, backgroundColor: "#F3F4F6",
+    alignItems: "center", justifyContent: "center",
   },
-  activityTitle: { fontSize:16, fontWeight:'700', color:'#111827', textAlign:'center' },
-  activityTime: { color:'#6B7280', marginTop:2, textAlign:'center' },
+  activityTitle: { fontSize: 14, fontWeight: "600", color: "#111827" },
+  activityTime: { fontSize: 12, color: "#6B7280", marginTop: 2 },
 });
