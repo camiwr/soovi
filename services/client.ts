@@ -6,7 +6,6 @@ if (!API_URL) throw new Error("EXPO_PUBLIC_API_URL não definida.");
 
 export const api = axios.create({ baseURL: API_URL, timeout: 15000 });
 
-/** ---------------- Token em memória (evita corrida com SecureStore) ---------------- */
 let volatileAccessToken: string | null = null;
 
 export function setAccessTokenInMemory(token: string | null) {
@@ -22,14 +21,12 @@ export function getAccessTokenInMemory() {
   return volatileAccessToken;
 }
 
-/** ---------------- Abort global para matar requisições antigas ---------------- */
 let httpAbortController = new AbortController();
 export function abortAllRequests() {
   try { httpAbortController.abort(); } catch {}
   httpAbortController = new AbortController();
 }
 
-/** ---------------- Refresh com fila ---------------- */
 let isRefreshing = false;
 let queue: { resolve: (v?: unknown)=>void; reject: (e:any)=>void; config:any }[] = [];
 
@@ -52,15 +49,11 @@ export function resetAuthQueue() {
   isRefreshing = false;
 }
 
-/** ---------------- Interceptor de request ---------------- */
 api.interceptors.request.use(async (config) => {
-  // abort controller global
   config.signal = httpAbortController.signal;
 
-  // SE já existe Authorization no config, NÃO sobrescreva (evita trocar por token antigo)
   if (config.headers?.Authorization) return config;
 
-  // tente o token em memória primeiro (imediato, sem race)
   const token = getAccessTokenInMemory() ?? await SecureStore.getItemAsync("accessToken");
 
   if (token) {
@@ -73,7 +66,6 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-/** ---------------- Interceptor de response (refresh) ---------------- */
 api.interceptors.response.use(
   (r) => r,
   async (error) => {

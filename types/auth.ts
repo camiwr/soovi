@@ -4,18 +4,11 @@ export type User = {
   email: string;
   cpf?: string | null;
   phone?: string | null;
-  avatarUrl?: string | null;
+  // acrescente campos da sua API se houver
 };
 
-export type LoginResponse = {
-  access_token: string;
-};
-
-export type SignUpInput = {
-  name: string;
-  email: string;
-  password: string;
-  cpf?: string;
-  phone?: string;
-  type?: string;
+export type AuthResponseNormalized = {
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
 };
