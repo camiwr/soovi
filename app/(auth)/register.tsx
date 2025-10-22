@@ -1,219 +1,289 @@
-import React, { useState } from 'react';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import {
-  Alert, StyleSheet, Text, TextInput, TouchableOpacity, View,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-} from 'react-native';
-import { Link } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
-import { onlyDigits, isEmail, isCpf, isPhone } from '../../lib/format';
+import React from "react";
+import { KeyboardAvoidingView, ScrollView, View, Text, Platform } from "react-native";
+import { Link, Redirect, router } from "expo-router";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import Toast from "react-native-toast-message";
+import * as Haptics from "expo-haptics";
 
-import { Mail, Lock } from 'lucide-react-native';
+import { useAuth } from "../../context/AuthContext";
+import { createUser, loginPassword, safeGetMe } from "../../services/auth";
+import { extractErrorMessage } from "../../services/normalize";
+import { decodeJwt } from "../../services/jwt";
+import { onlyDigits, isValidCPF, isValidPhoneBR } from "../../utils/validators";
 
-export default function Register() {
-  const { signUpWithCustom } = useAuth();
+import FormTextInput from "../../components/FormTextInput";
+import PrimaryButton from "../../components/PrimaryButton";
+import { Controller } from "react-hook-form";
+import { MaskedTextInput } from "react-native-mask-text";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [phone, setPhone] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  async function handleRegister() {
-    if (!name || !email || !password) return Alert.alert('Campos obrigatórios', 'Nome, e-mail e senha são obrigatórios.');
-    if (!isEmail(email)) return Alert.alert('Validação', 'E-mail inválido.');
-    if (cpf && !isCpf(cpf)) return Alert.alert('Validação', 'CPF deve ter 11 dígitos.');
-    if (phone && !isPhone(phone)) return Alert.alert('Validação', 'Telefone deve ter 10–11 dígitos.');
+async function waitForConsistentMeStrict({
+  accessToken,
+  expectedEmail,
+  maxDurationMs = 15000,
+  baseDelayMs = 200,
+  factor = 1.9,
+  warmupMs = 300,
+}: {
+  accessToken: string;
+  expectedEmail: string;
+  maxDurationMs?: number;
+  baseDelayMs?: number;
+  factor?: number;
+  warmupMs?: number;
+}) {
+  let elapsed = 0;
+  let delay = baseDelayMs;
 
-    try {
-      setIsLoading(true);
-      await signUpWithCustom({
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        cpf: onlyDigits(cpf),
-        phone: onlyDigits(phone),
-      });
-    } catch (e: any) {
-      Alert.alert('Erro', e?.message || 'Falha no cadastro');
-    } finally {
-      setIsLoading(false);
-    }
+  if (warmupMs > 0) {
+    await sleep(warmupMs);
+    elapsed += warmupMs;
   }
 
-  return (
-    <SafeAreaProvider style={styles.container}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.appName}>soolu</Text>
-            <Text style={styles.subtitle}>Crie sua conta</Text>
-          </View>
+  while (elapsed <= maxDurationMs) {
+    try {
+      const me = await safeGetMe(accessToken);
+      const meEmail = String(me?.email || "").toLowerCase();
+      if (meEmail === expectedEmail) return me;
+    } catch { }
+    const jitter = Math.floor(Math.random() * 60);
+    await sleep(delay + jitter);
+    elapsed += delay + jitter;
+    delay = Math.min(Math.floor(delay * factor), 1400);
+  }
 
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Nome"
-                  value={name}
-                  onChangeText={setName}
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <Mail size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <Lock size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Senha"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="CPF (só números)"
-                  value={cpf}
-                  onChangeText={setCpf}
-                  keyboardType="number-pad"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Telefone (DDD+numero)"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.loginButton} onPress={handleRegister} disabled={isLoading}>
-              {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.loginButtonText}>Cadastrar</Text>}
-            </TouchableOpacity>
-
-            <View style={styles.registerSection}>
-              <Text style={styles.registerPrompt}>Já tem uma conta?</Text>
-              <Link href="/(auth)/login" asChild>
-                <TouchableOpacity>
-                  <Text style={styles.registerLink}>Entrar</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaProvider>
-  );
+  throw new Error("Timeout esperando consistência do /users/me.");
 }
 
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F8FAFC' 
-  },
-  content: { 
-    flexGrow: 1, 
-    justifyContent: 'center', 
-    paddingHorizontal: 24 
-  },
-  header: { 
-    alignItems: 'center', 
-    marginBottom: 48 
-  },
-  appName: { 
-    fontSize: 32, 
-    fontWeight: 'bold', 
-    color: '#3B82F6', 
-    marginBottom: 8 
-  },
-  subtitle: { 
-    fontSize: 16, 
-    color: '#6B7280' 
-  },
-  form: { 
-    width: '100%' 
-  },
-  inputContainer: { 
-    marginBottom: 16 
-  },
-  inputWrapper: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12, 
-    paddingHorizontal: 16, 
-    paddingVertical: 4, 
-    borderWidth: 1, 
-    borderColor: '#E5E7EB',
-  },
-  inputIcon: { 
-    marginRight: 12 
-  },
-  input: { 
-    flex: 1, 
-    paddingVertical: 16, 
-    fontSize: 16, 
-    color: '#1F2937' 
-  },
-  loginButton: { 
-    backgroundColor: '#3B82F6', 
-    borderRadius: 12, 
-    paddingVertical: 16, 
-    alignItems: 'center', 
-    marginTop: 8, 
-    marginBottom: 16 
-  },
-  loginButtonText: { 
-    color: '#FFFFFF', 
-    fontSize: 16, 
-    fontWeight: '600' 
-  },
-  registerSection: { 
-    flexDirection: 'row', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginTop: 16 
-  },
-  registerPrompt: { 
-    color: '#6B7280', 
-    fontSize: 14, 
-    marginRight: 4 
-  },
-  registerLink: { 
-    color: '#3B82F6', 
-    fontSize: 14, 
-    fontWeight: '600' 
-  },
-});
+const schema = z
+  .object({
+    name: z.string().min(2, "Informe seu nome"),
+    email: z.string().email("E-mail inválido"),
+
+    cpf: z
+      .string()
+      .optional()
+      .transform((v) => (v ? onlyDigits(v) : undefined))
+      .refine((v) => !v || isValidCPF(v), "CPF inválido"),
+
+    phone: z
+      .string()
+      .optional()
+      .transform((v) => (v ? onlyDigits(v) : undefined))
+      .refine((v) => !v || isValidPhoneBR(v), "Telefone inválido (use DDD; cel: 11 dígitos)"),
+
+    password: z.string().optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Se senha for informada, exige mínimo e confirmação
+    if (data.password && data.password.length < 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Mínimo de 6 caracteres",
+        path: ["password"],
+      });
+    }
+    if ((data.password || data.confirmPassword) && data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "As senhas não conferem",
+        path: ["confirmPassword"],
+      });
+    }
+  });
+
+type FormData = z.infer<typeof schema>;
+
+export default function SignUp() {
+  const { user, setSession, clearSession } = useAuth();
+
+  const {
+    control,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: "",
+      email: "",
+      cpf: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  if (user) return <Redirect href="/(tabs)" />;
+
+  const onSubmit = async (data: FormData) => {
+    const expectedEmail = data.email.trim().toLowerCase();
+
+    try {
+      const payload = {
+        name: data.name.trim(),
+        email: expectedEmail,
+        cpf: data.cpf ? onlyDigits(data.cpf) : undefined,
+        phone: data.phone ? onlyDigits(data.phone) : undefined,
+        password: data.password ? data.password : undefined, // opcional
+      };
+      await createUser(payload);
+
+      if (!data.password) {
+        Toast.show({ type: "success", text1: "Conta criada!", text2: "Entre com seu e-mail na próxima tela." });
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.replace("/(auth)/login");
+        return;
+      }
+
+      const auth = await loginPassword({ email: expectedEmail, password: data.password });
+
+      const accessToken =
+        auth?.accessToken ?? auth?.access_token ?? auth?.data?.accessToken ?? null;
+      const refreshToken =
+        auth?.refreshToken ?? auth?.refresh_token ?? auth?.data?.refreshToken ?? null;
+
+      if (!accessToken) throw new Error("Token ausente após login.");
+
+      try {
+        const me = await waitForConsistentMeStrict({
+          accessToken,
+          expectedEmail,
+          maxDurationMs: 15000,
+          baseDelayMs: 220,
+          factor: 1.9,
+          warmupMs: 300,
+        });
+
+        await setSession({ user: me, accessToken, refreshToken });
+        Toast.show({ type: "success", text1: "Conta criada!" });
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.replace("/(tabs)");
+        return;
+      } catch {
+        const claims = decodeJwt(accessToken);
+        const tokenEmail = String(claims?.email ?? claims?.sub ?? "").toLowerCase();
+
+        if (tokenEmail && tokenEmail === expectedEmail) {
+          await setSession({ user: null, accessToken, refreshToken });
+
+          (async () => {
+            try {
+              const meLater = await waitForConsistentMeStrict({
+                accessToken,
+                expectedEmail,
+                maxDurationMs: 20000,
+                baseDelayMs: 300,
+                factor: 1.8,
+                warmupMs: 0,
+              });
+              await setSession({ user: meLater, accessToken, refreshToken });
+            } catch { }
+          })();
+
+          Toast.show({ type: "success", text1: "Conta criada!" });
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.replace("/(tabs)");
+          return;
+        }
+
+        await clearSession();
+        Toast.show({ type: "error", text1: "Cadastro inconsistente", text2: "As credenciais não correspondem." });
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } catch (e: any) {
+      await clearSession();
+      Toast.show({ type: "error", text1: "Falha no cadastro", text2: extractErrorMessage(e) });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
+
+  return (
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
+          <View style={{ alignItems: 'center', marginBottom: 48 }}>
+            <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#3B82F6', marginBottom: 8 }}>soovi</Text>
+            <Text style={{ fontSize: 16, color: '#6B7280' }}>Crie sua conta</Text>
+        </View>
+
+        <FormTextInput name="name" control={control} placeholder="Nome completo" />
+        <FormTextInput
+          name="email"
+          control={control}
+          placeholder="E-mail"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Controller
+          control={control}
+          name="cpf"
+          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+            <View style={{ marginBottom: 12 }}>
+              <MaskedTextInput
+                type="custom"
+                options={{ mask: "999.999.999-99" }}
+                value={value ?? ""}
+                onChangeText={(masked, unmasked) => onChange(unmasked)} // salva só dígitos
+                onBlur={onBlur}
+                keyboardType="number-pad"
+                placeholder="CPF"
+                style={{
+                  borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
+                  paddingVertical: 10, paddingHorizontal: 12, backgroundColor: "#FFF", fontSize: 16,
+                }}
+              />
+              {!!error && <Text style={{ color: "#EF4444", marginTop: 6 }}>{error.message}</Text>}
+            </View>
+          )}
+        />
+
+        {/* Telefone (mascarado) */}
+        <Controller
+          control={control}
+          name="phone"
+          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
+            const v = (value ?? "") as string;
+            const isCell = v.length >= 11;
+            const mask = isCell ? "(99) 99999-9999" : "(99) 9999-9999";
+            return (
+              <View style={{ marginBottom: 12 }}>
+                <MaskedTextInput
+                  type="custom"
+                  options={{ mask }}
+                  value={v}
+                  onChangeText={(masked, unmasked) => onChange(unmasked)} // salva só dígitos
+                  onBlur={onBlur}
+                  keyboardType="phone-pad"
+                  placeholder="Telefone com DDD"
+                  style={{
+                    borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
+                    paddingVertical: 10, paddingHorizontal: 12, backgroundColor: "#FFF", fontSize: 16,
+                  }}
+                />
+                {!!error && <Text style={{ color: "#EF4444", marginTop: 6 }}>{error.message}</Text>}
+              </View>
+            );
+          }}
+        />
+        <FormTextInput name="password" control={control} placeholder="Senha" secureTextEntry />
+        <FormTextInput name="confirmPassword" control={control} placeholder="Confirmar senha" secureTextEntry />
+
+        <PrimaryButton title="Cadastrar" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
+
+        <View style={{ marginTop: 16, flexDirection: "row", alignItems: "center" }}>
+          <Text>Já tem conta? </Text>
+          <Link href="/(auth)/login" asChild>
+            <Text style={{ color: "#2563EB", fontWeight: "700" }}>Entrar</Text>
+          </Link>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+    </SafeAreaProvider >
+  );
+}

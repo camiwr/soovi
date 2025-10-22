@@ -1,6 +1,4 @@
-import { Link, router } from 'expo-router';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,200 +6,179 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAuth } from '../../context/AuthContext';
+import { Link, Redirect, router } from "expo-router";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import Toast from "react-native-toast-message";
+import * as Haptics from "expo-haptics";
 
-export default function Login() {
-  const { signInPassword, user } = useAuth();
+import { useAuth } from "../../context/AuthContext";
+import { loginPassword, safeGetMe } from "../../services/auth";
+import { extractErrorMessage } from "../../services/normalize";
+import { decodeJwt } from "../../services/jwt";
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+import FormTextInput from "../../components/FormTextInput";
+import PrimaryButton from "../../components/PrimaryButton";
 
-  useEffect(() => {
-    if (user) {
-      router.replace('/(tabs)');
-    }
-  }, [user]);
+const schema = z.object({
+  email: z.string().email("E-mail inválido"),
+  password: z.string().min(6, "Mínimo de 6 caracteres"),
+});
+type FormData = z.infer<typeof schema>;
 
-  async function handleLogin() {
-    if (!email || !password) {
-      return Alert.alert('Campos obrigatórios', 'Preencha e-mail e senha.');
-    }
-    try {
-      setIsLoading(true);
-      await signInPassword(email, password);
-    } catch (e: any) {
-      Alert.alert('Erro no Login', e?.message || 'Falha ao tentar entrar.');
-    } finally {
-      setIsLoading(false);
-    }
+// helpers
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function waitForConsistentMeStrict({
+  accessToken,
+  expectedEmail,
+  maxDurationMs = 15000,  // ↑ aumentei o teto p/ 15s
+  baseDelayMs = 200,
+  factor = 1.9,
+  warmupMs = 250,         // pequeno atraso antes da 1ª chamada
+}: {
+  accessToken: string;
+  expectedEmail: string;
+  maxDurationMs?: number;
+  baseDelayMs?: number;
+  factor?: number;
+  warmupMs?: number;
+}) {
+  let elapsed = 0;
+  let delay = baseDelayMs;
+
+  if (warmupMs > 0) {
+    await sleep(warmupMs);
+    elapsed += warmupMs;
   }
 
+  while (elapsed <= maxDurationMs) {
+    try {
+      const me = await safeGetMe(accessToken); // já vai com cache-busting
+      const meEmail = String(me?.email || "").toLowerCase();
+      if (meEmail === expectedEmail) return me;
+    } catch {
+      // ignora e continua no backoff
+    }
+    const jitter = Math.floor(Math.random() * 60);
+    await sleep(delay + jitter);
+    elapsed += delay + jitter;
+    delay = Math.min(Math.floor(delay * factor), 1400); // limite ~1.4s
+  }
+
+  throw new Error("Timeout esperando consistência do /users/me.");
+}
+
+export default function SignIn() {
+  const { user, setSession, clearSession } = useAuth();
+
+  const { control, handleSubmit, formState: { isSubmitting } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  if (user) return <Redirect href="/(tabs)" />;
+
+  const onSubmit = async (data: FormData) => {
+    const expectedEmail = data.email.toLowerCase();
+
+    try {
+      const raw = await loginPassword({ email: data.email, password: data.password });
+      const accessToken =
+        raw?.accessToken ?? raw?.access_token ?? raw?.data?.accessToken ?? null;
+      const refreshToken =
+        raw?.refreshToken ?? raw?.refresh_token ?? raw?.data?.refreshToken ?? null;
+
+      if (!accessToken) throw new Error("Token ausente na resposta de login.");
+
+      try {
+        const me = await waitForConsistentMeStrict({
+          accessToken,
+          expectedEmail,
+          maxDurationMs: 15000,
+          baseDelayMs: 220,
+          factor: 1.9,
+          warmupMs: 300,
+        });
+
+        await setSession({ user: me, accessToken, refreshToken });
+        Toast.show({ type: "success", text1: "Bem-vindo!" });
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.replace("/(tabs)");
+        return;
+      } catch {
+        const claims = decodeJwt(accessToken);
+        const tokenEmail = String(claims?.email ?? claims?.sub ?? "").toLowerCase();
+
+        if (tokenEmail && tokenEmail === expectedEmail) {
+          await setSession({ user: null, accessToken, refreshToken });
+
+          (async () => {
+            try {
+              const meLater = await waitForConsistentMeStrict({
+                accessToken,
+                expectedEmail,
+                maxDurationMs: 20000,
+                baseDelayMs: 300,
+                factor: 1.8,
+                warmupMs: 0,
+              });
+              await setSession({ user: meLater, accessToken, refreshToken });
+            } catch {
+
+            }
+          })();
+
+          Toast.show({ type: "success", text1: "Bem-vindo!" });
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.replace("/(tabs)");
+          return;
+        }
+
+        await clearSession();
+        Toast.show({
+          type: "error",
+          text1: "Login bloqueado",
+          text2: "As credenciais não correspondem ao usuário.",
+        });
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } catch (e: any) {
+      await clearSession();
+      Toast.show({
+        type: "error",
+        text1: "Não foi possível entrar",
+        text2: extractErrorMessage(e) || "Tente novamente em instantes.",
+      });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  };
+
   return (
-    <SafeAreaProvider style={styles.container}>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.appName}>soovi</Text>
-            <Text style={styles.subtitle}>Bem-vindo de volta</Text>
-          </View>
-
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <Mail size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
+          <View style={{ flex: 1, padding: 20, justifyContent: "center", backgroundColor: "#F9FAFB" }}>
+            <View style={{ alignItems: 'center', marginBottom: 48 }}>
+              <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#3B82F6', marginBottom: 8 }}>soovi</Text>
+              <Text style={{ fontSize: 16, color: '#6B7280' }}>Bem-vindo de volta</Text>
             </View>
 
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <Lock size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Senha"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  placeholderTextColor="#9CA3AF"
-                />
-                <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff size={20} color="#6B7280" /> : <Eye size={20} color="#6B7280" />}
-                </TouchableOpacity>
-              </View>
-            </View>
+            <FormTextInput name="email" control={control} placeholder="E-mail" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+            <FormTextInput name="password" control={control} placeholder="Senha" secureTextEntry />
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
-              {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.loginButtonText}>Entrar</Text>}
-            </TouchableOpacity>
-            
-            <View style={styles.registerSection}>
-              <Text style={styles.registerPrompt}>Não tem uma conta?</Text>
+            <PrimaryButton title="Entrar" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
+
+            <View style={{ marginTop: 16, flexDirection: "row", alignItems: "center" }}>
+              <Text>Não tem conta? </Text>
               <Link href="/(auth)/register" asChild>
-                <TouchableOpacity>
-                  <Text style={styles.registerLink}>Criar conta</Text>
-                </TouchableOpacity>
+                <Text style={{ color: "#2563EB", fontWeight: "700" }}>Cadastre-se</Text>
               </Link>
             </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaProvider>
+    </SafeAreaProvider >
   );
 }
-
-// ... Seus estilos permanecem os mesmos ...
-const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#F8FAFC' 
-  },
-  content: { 
-    flexGrow: 1, 
-    justifyContent: 'center', 
-    paddingHorizontal: 24 
-  },
-  header: { 
-    alignItems: 'center', 
-    marginBottom: 48 
-  },
-  appName: { 
-    fontSize: 32, 
-    fontWeight: 'bold', 
-    color: '#3B82F6', 
-    marginBottom: 8 
-  },
-  subtitle: { 
-    fontSize: 16, 
-    color: '#6B7280' 
-  },
-  form: { 
-    width: '100%' 
-  },
-  inputContainer: { 
-    marginBottom: 16 
-  },
-  inputWrapper: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12, 
-    paddingHorizontal: 16, 
-    paddingVertical: 4, 
-    borderWidth: 1, 
-    borderColor: '#E5E7EB',
-  },
-  inputIcon: { 
-    marginRight: 12 
-  },
-  input: { 
-    flex: 1, 
-    paddingVertical: 16, 
-    fontSize: 16, 
-    color: '#1F2937' 
-  },
-  eyeIcon: { 
-    padding: 4 
-  },
-  loginButton: { 
-    backgroundColor: '#3B82F6', 
-    borderRadius: 12, 
-    paddingVertical: 16, 
-    alignItems: 'center', 
-    marginTop: 8, 
-    marginBottom: 16 
-  },
-  loginButtonText: { 
-    color: '#FFFFFF', 
-    fontSize: 16, 
-    fontWeight: '600' 
-  },
-  forgotPassword: { 
-    alignItems: 'center', 
-    marginBottom: 32 
-  },
-  forgotPasswordText: { 
-    color: '#3B82F6', 
-    fontSize: 14 
-  },
-  googleButton: {
-    backgroundColor: '#DB4437', 
-    borderRadius: 12, 
-    paddingVertical: 16,
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginTop: 16,
-  },
-  googleButtonText: { 
-    color: '#FFFFFF', 
-    fontSize: 16, 
-    fontWeight: '600', 
-    marginLeft: 8 
-  },
-  registerSection: { 
-    flexDirection: 'row', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginTop: 16 
-  },
-  registerPrompt: { 
-    color: '#6B7280', 
-    fontSize: 14, 
-    marginRight: 4 
-  },
-  registerLink: { 
-    color: '#3B82F6', 
-    fontSize: 14, 
-    fontWeight: '600' 
-  },
-});
