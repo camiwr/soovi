@@ -1,110 +1,89 @@
-import { router } from 'expo-router';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { deleteTokens, getTokens } from '../lib/session';
-import {
-  createUser,
-  loginPassword,
-  logout,
-  me,
-  updateUser,
-} from '../services/auth';
-import { SignUpInput, User } from '../types/auth';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { safeGetMe, getMe } from "../services/auth";
+import { setAccessTokenInMemory, abortAllRequests, resetAuthQueue } from "../services/client";
+import { queryClient } from "../lib/queryClient";
+
+type User = { id: string; name?: string | null; email: string; cpf?: string | null; phone?: string | null; };
+type AuthResponseNormalized = { user: User | null; accessToken: string | null; refreshToken: string | null; };
 
 type AuthCtx = {
   user: User | null;
   loading: boolean;
-  signInPassword: (email: string, password: string) => Promise<void>;
-  signUpWithCustom: (p: SignUpInput) => Promise<void>;
-  signOut: () => Promise<void>;
-  updateProfile: (payload: { name?: string; phone?: string }) => Promise<void>;
+  setSession: (auth: AuthResponseNormalized) => Promise<void>;
+  clearSession: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
-const Ctx = createContext<AuthCtx>({} as any);
-export const useAuth = () => useContext(Ctx);
+const Ctx = createContext<AuthCtx | null>(null);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionRef = useRef(0);
+  const bumpSession = () => { sessionRef.current += 1; return sessionRef.current; };
 
-  async function checkUserSession() {
-    setLoading(true);
+  const setSession = async (auth: AuthResponseNormalized) => {
+    abortAllRequests();
+    resetAuthQueue();
+    const mySession = bumpSession();
+    queryClient.clear();
+
+    if (auth.accessToken) await SecureStore.setItemAsync("accessToken", auth.accessToken);
+    if (auth.refreshToken) await SecureStore.setItemAsync("refreshToken", auth.refreshToken);
+
+    setAccessTokenInMemory(auth.accessToken ?? null);
+
+    console.log("setSession TOKENS:", auth.accessToken?.slice(0,30), auth.refreshToken?.slice(0,30));
+
     try {
-      const { accessToken } = await getTokens(); 
-      if (accessToken) {                         
-        const userData = await me();
-        setUser(userData);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.warn('Falha ao verificar sessão inicial (pode ser normal):', error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+    const me = auth.accessToken
+      ? await safeGetMe(auth.accessToken) 
+      : await getMe();                    
+    if (sessionRef.current === mySession) setUser(me);
+  } catch {
+    if (sessionRef.current === mySession) setUser(null);
   }
+};
+
+  const clearSession = async () => {
+    abortAllRequests();
+    resetAuthQueue();
+    bumpSession();
+    await SecureStore.deleteItemAsync("accessToken");
+    await SecureStore.deleteItemAsync("refreshToken");
+    setAccessTokenInMemory(null); 
+    setUser(null);
+    queryClient.clear();
+    console.log("Sessão limpa");
+  };
+
+  const refreshProfile = async () => {
+    const mySession = sessionRef.current;
+    try {
+      const me = await getMe();
+      if (sessionRef.current === mySession) setUser(me);
+    } catch {}
+  };
 
   useEffect(() => {
-    checkUserSession();
+    (async () => {
+      try {
+        const token = await SecureStore.getItemAsync("accessToken");
+        setAccessTokenInMemory(token ?? null); 
+        if (token) await refreshProfile();
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  const signInPassword = async (email: string, password: string) => {
-    try {
-      await deleteTokens();
-      setUser(null);
-      await loginPassword(email, password);
-      const userData = await me();
-      setUser(userData);
-      router.replace('/(tabs)');
-    } catch (error: any) {
-      console.error('Falha no processo de login:', error.message);
-      await deleteTokens();
-      setUser(null);
-      throw error;
-    }
-  };
+  const value = useMemo(() => ({ user, loading, setSession, clearSession, refreshProfile }), [user, loading]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+};
 
-  const signUpWithCustom = async (p: SignUpInput) => {
-    await createUser(p);
-    await signInPassword(p.email, p.password);
-  };
-
-  const signOut = async () => {
-    try {
-      setUser(null);
-      await logout();
-      router.replace('/(auth)/login');
-    } catch (error) {
-      console.error("Erro durante o signOut. Forçando limpeza local:", error);
-      await deleteTokens();
-      setUser(null);
-      router.replace('/(auth)/login');
-    }
-  };
-
-  const updateProfile = async (payload: { name?: string; phone?: string }) => {
-    if (!user?.id) return;
-    try {
-      const updatedUser = await updateUser(user.id, payload);
-      setUser(updatedUser);
-    } catch (error) {
-       console.error("Erro ao atualizar perfil:", error);
-       throw error;
-    }
-  };
-
-  return (
-    <Ctx.Provider
-      value={{
-        user,
-        loading,
-        signInPassword,
-        signUpWithCustom,
-        signOut,
-        updateProfile,
-      }}
-    >
-      {children}
-    </Ctx.Provider>
-  );
+export const useAuth = () => {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useAuth must be used within AuthProvider");
+  return v;
 };

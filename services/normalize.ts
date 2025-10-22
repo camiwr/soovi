@@ -1,4 +1,3 @@
-// Dado que o shape pode variar, este helper "padrão" extrai tokens e user.
 export function normalizeAuthResponse(raw: any): {
   user: any | null;
   accessToken: string | null;
