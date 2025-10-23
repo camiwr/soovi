@@ -59,7 +59,6 @@ async function waitForConsistentMeStrict({
       const meEmail = String(me?.email || "").toLowerCase();
       if (meEmail === expectedEmail) return me;
     } catch {
-      // ignora e continua no backoff
     }
     const jitter = Math.floor(Math.random() * 60);
     await sleep(delay + jitter);
