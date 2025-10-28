@@ -1,0 +1,12 @@
+import { Stack } from "expo-router";
+
+export default function AreasLayout() {
+    return (
+        <Stack screenOptions={{ headerBackTitle: "Voltar", headerShown: false }}>
+            <Stack.Screen name="index" options={{ title: "Minhas Áreas" }} />
+            <Stack.Screen name="create" options={{ title: "Nova Área" }} />
+            <Stack.Screen name="[id]" options={{ title: "Detalhes da Área" }} />
+            <Stack.Screen name="edit/[id]" options={{ title: "Editar Área" }} />
+        </Stack>
+    );
+}

@@ -33,10 +33,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function waitForConsistentMeStrict({
   accessToken,
   expectedEmail,
-  maxDurationMs = 15000,  // ↑ aumentei o teto p/ 15s
+  maxDurationMs = 15000,  
   baseDelayMs = 200,
   factor = 1.9,
-  warmupMs = 250,         // pequeno atraso antes da 1ª chamada
+  warmupMs = 250,         
 }: {
   accessToken: string;
   expectedEmail: string;
@@ -55,7 +55,7 @@ async function waitForConsistentMeStrict({
 
   while (elapsed <= maxDurationMs) {
     try {
-      const me = await safeGetMe(accessToken); // já vai com cache-busting
+      const me = await safeGetMe(accessToken);
       const meEmail = String(me?.email || "").toLowerCase();
       if (meEmail === expectedEmail) return me;
     } catch {
@@ -63,7 +63,7 @@ async function waitForConsistentMeStrict({
     const jitter = Math.floor(Math.random() * 60);
     await sleep(delay + jitter);
     elapsed += delay + jitter;
-    delay = Math.min(Math.floor(delay * factor), 1400); // limite ~1.4s
+    delay = Math.min(Math.floor(delay * factor), 1400); 
   }
 
   throw new Error("Timeout esperando consistência do /users/me.");
