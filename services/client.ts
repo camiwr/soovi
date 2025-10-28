@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import * as SecureStore from "expo-secure-store";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
@@ -23,21 +23,27 @@ export function getAccessTokenInMemory() {
 
 let httpAbortController = new AbortController();
 export function abortAllRequests() {
-  try { httpAbortController.abort(); } catch {}
+  try { httpAbortController.abort(); } catch { }
   httpAbortController = new AbortController();
 }
 
 let isRefreshing = false;
-let queue: { resolve: (v?: unknown)=>void; reject: (e:any)=>void; config:any }[] = [];
+type QueueItem = {
+  resolve: (v?: unknown) => void;
+  reject: (e: any) => void;
+  config: AxiosRequestConfig & { _retry?: boolean };
+};
+let queue: QueueItem[] = [];
 
 function processQueue(error: any, token: string | null) {
-  queue.forEach(p => {
-    if (error) p.reject(error);
-    else {
+  queue.forEach((p) => {
+    if (error) {
+      p.reject(error);
+    } else {
       p.config.headers = { ...(p.config.headers ?? {}) };
-      if (token) p.config.headers.Authorization = `Bearer ${token}`;
-      else delete p.config.headers.Authorization;
-      p.resolve(axios(p.config));
+      if (token) (p.config.headers as any).Authorization = `Bearer ${token}`;
+      else delete (p.config.headers as any).Authorization;
+      p.resolve(api.request(p.config));
     }
   });
   queue = [];
@@ -74,6 +80,13 @@ api.interceptors.response.use(
     const original = error?.config;
     const status = error?.response?.status;
 
+    if ((error as any)?.code === "ECONNABORTED") {
+      throw new Error("Tempo de requisição esgotado. Tente novamente.");
+    }
+    if ((error as any)?.code === "ERR_NETWORK") {
+      throw new Error("Sem conexão com a internet. Verifique sua rede.");
+    }
+
     if (status === 401 && !original?._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => queue.push({ resolve, reject, config: original }));
@@ -98,13 +111,16 @@ api.interceptors.response.use(
 
         if (newAccess) {
           await SecureStore.setItemAsync("accessToken", newAccess);
-          setAccessTokenInMemory(newAccess); // <<< atualiza em memória imediatamente
+          setAccessTokenInMemory(newAccess);
         }
         if (newRefresh) await SecureStore.setItemAsync("refreshToken", newRefresh);
 
         processQueue(null, newAccess ?? null);
         return api(original);
       } catch (err) {
+        await SecureStore.deleteItemAsync("accessToken").catch(() => {});
+        await SecureStore.deleteItemAsync("refreshToken").catch(() => {});
+        setAccessTokenInMemory(null);
         processQueue(err, null);
         throw err;
       } finally {
