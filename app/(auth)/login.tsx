@@ -1,9 +1,6 @@
 import React from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView, Platform, ScrollView,
-  StyleSheet, Text, TextInput, TouchableOpacity, View,
+  KeyboardAvoidingView, Platform, ScrollView, Text, View,
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Link, Redirect, router } from "expo-router";

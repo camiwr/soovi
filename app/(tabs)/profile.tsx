@@ -3,7 +3,6 @@ import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 
 import Toast from "react-native-toast-message";
 import { router } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
-import { getAccessTokenInMemory } from "../../services/client"; // p/ debug visual do token
 
 function getInitials(input: string) {
   const parts = input.trim().split(/\s+/);

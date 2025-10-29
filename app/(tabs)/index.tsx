@@ -7,7 +7,7 @@ type Activity = {
   id: string;
   type: "simulation" | "area";
   title: string;
-  created_at: string; // ISO
+  created_at: string; 
 };
 
 export default function HomeScreen() {
@@ -21,12 +21,10 @@ export default function HomeScreen() {
     return chunk.replace(/@.*/, "");
   }, [user]);
 
-  // TODO: Trocar por fetch real quando os endpoints de atividades forem definidos
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
-        // Exemplo mock: substitua por chamada real quando tiver a rota
         const mock: Activity[] = [];
         if (isMounted) setActivities(mock);
       } finally {
@@ -37,11 +35,11 @@ export default function HomeScreen() {
   }, []);
 
   const handleNovaArea = () => {
-    router.push("/areas/create"); // ajuste a rota real quando existir
+    router.push("/areas/create"); 
   };
 
   const handleMyAreas = () => {
-    router.push("/areas"); // ajuste a rota real quando existir
+    router.push("/areas"); 
   };
 
   return (
