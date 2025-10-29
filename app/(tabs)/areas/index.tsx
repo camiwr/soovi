@@ -29,7 +29,7 @@ export default function AreasIndex() {
     try {
       if (!user?.id) throw new Error("Usuário não autenticado.");
       setLoading(true);
-      const rows = await listAreasByOwner(user.id); // apenas owner_id (sem page/limit)
+      const rows = await listAreasByOwner(user.id);
       setItems(rows);
     } catch (e: any) {
       Alert.alert("Erro", errMsg(e));
@@ -58,7 +58,6 @@ export default function AreasIndex() {
         onPress: async () => {
           try {
             if (!user?.id) throw new Error("Usuário não autenticado.");
-            // manda owner_id no BODY do DELETE
             await deleteArea(area.id, user.id);
             setItems((prev) => prev.filter((a) => a.id !== area.id));
           } catch (e: any) {

@@ -12,35 +12,25 @@ export async function listAreasByOwner(ownerId: string): Promise<Area[]> {
   return [];
 }
 
-// LER (ok)
 export async function getArea(id: string): Promise<Area> {
   const { data } = await api.get<Area>(`/area/${id}`);
   return data;
 }
 
-// CRIAR (owner_id no body)
 export async function createArea(payload: CreateAreaDTO & { owner_id: string }): Promise<Area> {
   const { data } = await api.post<Area>("/area", payload);
   return data;
 }
 
-/**
- * ATUALIZAR (owner_id **NO BODY**)
- * Alguns backends ignoram owner_id em query nos métodos PATCH/DELETE.
- * Aqui mandamos no body para evitar 401 USER_NOT_AUTORIZED.
- */
 export async function updateArea(id: string, payload: UpdateAreaDTO, ownerId: string): Promise<Area> {
   const { data } = await api.patch<Area>(`/area/${id}`, {
     ...payload,
-    owner_id: ownerId, // <- manda no body
+    owner_id: ownerId, 
   });
   return data;
 }
 
-/**
- * DELETAR (owner_id **NO BODY**)
- * Com Axios, DELETE com body precisa usar `data`.
- */
+
 export async function deleteArea(id: string, ownerId: string): Promise<void> {
   await api.request({
     method: "DELETE",

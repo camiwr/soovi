@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Alert, TextInput } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import { getArea } from "@/services/areas";
 import { createSimulation } from "@/services/simulations";
 import type { Area } from "@/types/area";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function CreateSimulationScreen() {
     const router = useRouter();
@@ -42,7 +42,14 @@ export default function CreateSimulationScreen() {
     if (!area) return <View style={{ padding: 16 }}><Text>Área não encontrada.</Text></View>;
 
     return (
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
+        <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+                    <Text style={{ fontSize: 24, color: '#007AFF' }}>←</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 16 }}>Criar Simulação</Text>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
             <View style={{ padding: 12, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#fff" }}>
                 <Text style={{ fontWeight: "800", fontSize: 16 }}>{area.description}</Text>
                 <Text>Área total: {area.total_area_hectare} ha</Text>
@@ -75,5 +82,6 @@ export default function CreateSimulationScreen() {
                 <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>Simular</Text>
             </TouchableOpacity>
         </ScrollView>
+    </View>
     );
 }

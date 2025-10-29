@@ -34,9 +34,39 @@ export default function CreateAreaScreen() {
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       <AreaForm onChange={onChange} />
-      <TouchableOpacity onPress={onSubmit} style={{ backgroundColor: "#16a34a", padding: 14, borderRadius: 10 }}>
-        <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>Salvar</Text>
-      </TouchableOpacity>
+      {(() => {
+        const SubmitButton: React.FC = () => {
+          const [loading, setLoading] = React.useState(false);
+
+          const handlePress = async () => {
+            setLoading(true);
+            try {
+              await onSubmit();
+            } finally {
+              setLoading(false);
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              onPress={handlePress}
+              disabled={loading}
+              style={{
+                backgroundColor: "#16a34a",
+                padding: 14,
+                borderRadius: 10,
+                opacity: loading ? 0.6 : 1,
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>
+                {loading ? "Salvando..." : "Salvar"}
+              </Text>
+            </TouchableOpacity>
+          );
+        };
+
+        return <SubmitButton />;
+      })()}
     </ScrollView>
   );
 }

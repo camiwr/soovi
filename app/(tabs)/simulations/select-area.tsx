@@ -22,7 +22,14 @@ export default function SelectAreaScreen() {
   if (loading) return <View style={{flex:1,justifyContent:"center",alignItems:"center"}}><ActivityIndicator/></View>;
 
   return (
-    <View style={{ flex:1, padding:16 }}>
+    <View style={{ flex:1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+          <Text style={{ fontSize: 24, color: '#007AFF' }}>←</Text>
+        </TouchableOpacity>
+        <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 16 }}>Selecionar Área</Text>
+      </View>
+      <View style={{ flex:1, padding:16 }}>
       <Text style={{ fontSize:18, fontWeight:"800", marginBottom:12 }}>Escolha uma área para simular</Text>
 
       <FlatList
@@ -46,6 +53,7 @@ export default function SelectAreaScreen() {
         )}
         ListEmptyComponent={<Text>Você ainda não tem áreas cadastradas.</Text>}
       />
+    </View>
     </View>
   );
 }

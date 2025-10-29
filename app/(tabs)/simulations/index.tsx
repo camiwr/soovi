@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from "react-native";
-import { useRouter } from "expo-router";
-import { listSimulations, deleteSimulation } from "@/services/simulations";
-import { listAreasByOwner } from "@/services/areas";
 import { useAuth } from "@/context/AuthContext";
-import type { Simulation } from "@/types/simulation";
+import { listAreasByOwner } from "@/services/areas";
+import { deleteSimulation, listSimulations } from "@/services/simulations";
 import type { Area } from "@/types/area";
+import type { Simulation } from "@/types/simulation";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Alert, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native";
 
 const msg = (e:any)=> e?.response?.data?.message ?? e?.message ?? "Falha na requisição.";
 const money = (n:number)=> `R$ ${Number(n||0).toLocaleString("pt-BR")}`;
@@ -54,7 +54,13 @@ export default function SimulationsIndex() {
   if (loading) return <View style={{flex:1,justifyContent:"center",alignItems:"center"}}><ActivityIndicator/></View>;
 
   return (
-    <View style={{ flex:1, padding:16, gap:12 }}>
+    <View style={{ flex:1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={{ fontSize: 24, color: '#007AFF' }}>←</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ flex:1, padding:16, gap:12 }}>
       <TouchableOpacity
         onPress={()=>router.push("/simulations/select-area")}
         style={{ backgroundColor:"#2563eb", padding:12, borderRadius:10 }}
@@ -102,6 +108,7 @@ export default function SimulationsIndex() {
           )}
         />
       )}
+      </View>
     </View>
   );
 }
