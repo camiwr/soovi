@@ -3,6 +3,7 @@ import { createSimulation } from "@/services/simulations";
 import type { Area } from "@/types/area";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+import InputSpinner from "react-native-input-spinner";
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function CreateSimulationScreen() {
@@ -50,38 +51,40 @@ export default function CreateSimulationScreen() {
                 <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 16 }}>Criar Simulação</Text>
             </View>
             <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
-            <View style={{ padding: 12, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#fff" }}>
-                <Text style={{ fontWeight: "800", fontSize: 16 }}>{area.description}</Text>
-                <Text>Área total: {area.total_area_hectare} ha</Text>
-                {area.location ? <Text>Localização: {area.location}</Text> : null}
-            </View>
+                <View style={{ padding: 12, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#fff" }}>
+                    <Text style={{ fontWeight: "800", fontSize: 16 }}>{area.description}</Text>
+                    <Text>Área total: {area.total_area_hectare} ha</Text>
+                    {area.location ? <Text>Localização: {area.location}</Text> : null}
+                </View>
 
-            <View style={{ padding: 12, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#f8fafc" }}>
-                <Text style={{ fontWeight: "700", marginBottom: 6 }}>Como funciona?</Text>
-                <Text style={{ color: "#334155" }}>
-                    A simulação é calculada pelo nosso sistema com parâmetros padrão (infraestrutura, impostos, comissão, etc.).
-                    Você só escolhe o período de recebimento (anos) e confirma.
-                </Text>
-            </View>
+                <View style={{ padding: 12, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#f8fafc" }}>
+                    <Text style={{ fontWeight: "700", marginBottom: 6 }}>Como funciona?</Text>
+                    <Text style={{ color: "#334155" }}>
+                        A simulação é calculada pelo nosso sistema com parâmetros padrão (infraestrutura, impostos, comissão, etc.).
+                        Você só escolhe o período de recebimento (em anos) e confirma.
+                    </Text>
+                </View>
 
-            {/* Único campo necessário */}
-            <View style={{ gap: 6 }}>
-                <Text style={{ fontWeight: "600" }}>Anos de recebimento *</Text>
-                <TextInput
-                    value={years}
-                    onChangeText={setYears}
-                    keyboardType="number-pad"
-                    style={{ borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#fff", padding: 10, fontSize: 16 }}
-                    placeholder="5"
-                />
-            </View>
+                {/* Único campo necessário */}
+                <View style={{ gap: 6 }}>
+                    <Text style={{ fontWeight: "600" }}>Anos de recebimento *</Text>
+                    <InputSpinner
+                        value={Number(years || 5)}
+                        onChange={(num) => setYears(String(num))}
+                        min={1}
+                        step={1}
+                        skin="clean"
+                        height={44}
+                        buttonFontSize={18}
+                        inputStyle={{ fontSize: 16 } as any}
+                        style={{ borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#fff" }}
+                    />
+                </View>
 
-            {/* (Opcional) mostrar infra global do sistema aqui */}
-
-            <TouchableOpacity onPress={onSubmit} style={{ backgroundColor: "#16a34a", padding: 14, borderRadius: 10 }}>
-                <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>Simular</Text>
-            </TouchableOpacity>
-        </ScrollView>
-    </View>
+                <TouchableOpacity onPress={onSubmit} style={{ backgroundColor: "#16a34a", padding: 14, borderRadius: 10 }}>
+                    <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>Simular</Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </View>
     );
 }
