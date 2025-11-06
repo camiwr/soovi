@@ -69,6 +69,31 @@ async function waitForConsistentMeStrict({
   throw new Error("Timeout esperando consistência do /users/me.");
 }
 
+// CORREÇÃO (HOOKS): Componente movido para fora da renderização principal
+const PasswordTextInput: React.FC<{ control: any }> = ({ control }) => {
+  const [showPassword, setShowPassword] = React.useState(false);
+
+  return (
+    <View style={{ position: 'relative', justifyContent: 'center' }}>
+      <FormTextInput
+        name="password"
+        control={control}
+        placeholder="Senha"
+        secureTextEntry={!showPassword}
+        autoCapitalize="none"
+      />
+
+      <TouchableOpacity
+        onPress={() => setShowPassword((s: boolean) => !s)}
+        activeOpacity={0.7}
+        style={{ position: 'absolute', right: 12, top: 5, height: 40, justifyContent: 'center' }}
+      >
+        <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#6B7280" />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
 export default function SignIn() {
   const { user, setSession, clearSession } = useAuth();
 
@@ -83,7 +108,8 @@ export default function SignIn() {
     const expectedEmail = data.email.toLowerCase();
 
     try {
-      const raw = await loginPassword({ email: data.email, password: data.password });
+      const raw = await loginPassword({ email: expectedEmail, password: data.password });
+      
       const accessToken =
         raw?.accessToken ?? raw?.access_token ?? raw?.data?.accessToken ?? null;
       const refreshToken =
@@ -165,29 +191,8 @@ export default function SignIn() {
             </View>
               <FormTextInput name="email" control={control} placeholder="E-mail" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
 
-              {(() => {
-                const [showPassword, setShowPassword] = React.useState(false);
-
-                return (
-                  <View style={{ position: 'relative', justifyContent: 'center' }}>
-                    <FormTextInput
-                      name="password"
-                      control={control}
-                      placeholder="Senha"
-                      secureTextEntry={!showPassword}
-                      autoCapitalize="none"
-                    />
-
-                    <TouchableOpacity
-                      onPress={() => setShowPassword((s: boolean) => !s)}
-                      activeOpacity={0.7}
-                      style={{ position: 'absolute', right: 12, top: 5, height: 40, justifyContent: 'center' }}
-                    >
-                      <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#6B7280" />
-                    </TouchableOpacity>
-                  </View>
-                );
-              })()}
+              {/* CORREÇÃO (HOOKS): Renderiza o componente extraído */}
+              <PasswordTextInput control={control} />
 
               <PrimaryButton title="Entrar" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
 

@@ -84,11 +84,11 @@ export default function SimulationDetails(){
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: colors.tint, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <Text style={{ fontSize: 24, color: '#fff' }}>←</Text>
+          <Text style={{ fontSize: 24, color: '#000' }}>←</Text>
         </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 16, color: '#fff' }}>Detalhes da Simulação</Text>
+        <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 16, color: '#000' }}>Detalhes da Simulação</Text>
       </View>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingVertical: 16 }}>
         <View style={{ marginBottom: 20, padding: 16, backgroundColor: '#f0f8ff', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>

@@ -1,13 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { router } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import SooviLogo from '../../assets/images/LOGO_SOOVI_AZUL.svg';
 import { useAuth } from "../../context/AuthContext";
 
 type Activity = {
   id: string;
   type: "simulation" | "area";
   title: string;
-  created_at: string; 
+  created_at: string;
 };
 
 export default function HomeScreen() {
@@ -35,15 +36,22 @@ export default function HomeScreen() {
   }, []);
 
   const handleNovaArea = () => {
-    router.push("/areas/create"); 
+    router.push("/areas/create");
   };
 
+  const handleNovaSimu = () => {
+    router.push("/simulations");
+  }
+
   const handleMyAreas = () => {
-    router.push("/areas"); 
+    router.push("/areas");
   };
 
   return (
     <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 24, alignItems: "center" }}>
+      <View style={s.logoContainer}>
+        <SooviLogo width={140} height={70} />
+      </View>
       <Text style={s.h1}>Olá, {firstName}!</Text>
       <Text style={s.subtitle}>O que você gostaria de fazer hoje?</Text>
 
@@ -51,6 +59,12 @@ export default function HomeScreen() {
         <View style={s.plusCircle}><Text style={s.plusText}>＋</Text></View>
         <Text style={s.bigTitle}>Nova Área</Text>
         <Text style={s.bigDesc}>Criar uma nova área</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={s.bigCardSimu} onPress={handleNovaSimu} activeOpacity={0.9}>
+        <View style={s.plusCircleSimu}><Text style={s.plusText}>＋</Text></View>
+        <Text style={s.bigTitleSimu}>Nova Simulação</Text>
+        <Text style={s.bigDesc}>Criar uma nova simulação</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={s.card} onPress={handleMyAreas} activeOpacity={0.9}>
@@ -96,30 +110,43 @@ function formatRelative(iso: string) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, paddingTop: 28, paddingHorizontal: 20, backgroundColor: "#F9FAFB" },
+  container: { flex: 1, paddingTop: 28, paddingHorizontal: 20, backgroundColor: "#ffffff" },
+  logoContainer: { alignItems: "center", marginBottom: 50, marginTop: -50 },
   h1: { fontSize: 24, fontWeight: "800", color: "#111827", width: "100%" },
   subtitle: { marginTop: 6, fontSize: 14, color: "#6B7280", width: "100%", marginBottom: 20 },
 
   bigCard: {
-    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 16, padding: 18,
-    alignItems: "flex-start", marginBottom: 14, borderWidth: 1, borderColor: "#E5E7EB",
-    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 20, padding: 20,
+    alignItems: "flex-start", marginBottom: 16, borderWidth: 1, borderColor: "#E5E7EB",
+    shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
   },
   plusCircle: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: "#EEF2FF",
-    alignItems: "center", justifyContent: "center", marginBottom: 10,
+    width: 48, height: 48, borderRadius: 24, backgroundColor: "#3B82F6",
+    alignItems: "center", justifyContent: "center", marginBottom: 12,
   },
-  plusText: { fontSize: 28, color: "#3730A3", lineHeight: 28 },
+  plusText: { fontSize: 32, color: "#FFFFFF", lineHeight: 32 },
   bigTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
   bigDesc: { fontSize: 13, color: "#6B7280", marginTop: 4 },
 
+  bigCardSimu: {
+    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 20, padding: 20,
+    alignItems: "flex-start", marginBottom: 16, borderWidth: 1, borderColor: "#E5E7EB",
+    shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
+  },
+  plusCircleSimu: {
+    width: 48, height: 48, borderRadius: 24, backgroundColor: "#f5b804",
+    alignItems: "center", justifyContent: "center", marginBottom: 12,
+  },
+  bigTitleSimu: { fontSize: 18, fontWeight: "700", color: "#111827" },
+
   card: {
-    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14,
+    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
     flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20,
     borderWidth: 1, borderColor: "#E5E7EB",
+    shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, elevation: 3,
   },
   iconCircle: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: "#ECFEFF",
+    width: 44, height: 44, borderRadius: 22, backgroundColor: "#34a353",
     alignItems: "center", justifyContent: "center",
   },
   cardTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
@@ -132,7 +159,8 @@ const s = StyleSheet.create({
 
   activityItem: {
     flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FFF",
-    borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 14, padding: 14,
+    shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
   activityIcon: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: "#F3F4F6",

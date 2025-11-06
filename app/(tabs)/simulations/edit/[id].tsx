@@ -46,9 +46,45 @@ export default function EditSimulationScreen(){
         placeholder="5"
       />
 
-      <TouchableOpacity onPress={onSubmit} style={{ backgroundColor:"#2563eb", padding:14, borderRadius:10, marginTop:10 }}>
-        <Text style={{ color:"#fff", fontWeight:"700", textAlign:"center" }}>Salvar alterações</Text>
-      </TouchableOpacity>
+      {
+        (() => {
+          const SaveButton: React.FC = () => {
+            const [saving, setSaving] = React.useState(false);
+            const handlePress = async () => {
+              try {
+                setSaving(true);
+                await onSubmit();
+              } finally {
+                setSaving(false);
+              }
+            };
+            return (
+              <TouchableOpacity
+                onPress={handlePress}
+                disabled={saving}
+                style={{
+                  backgroundColor: "#2563eb",
+                  padding: 14,
+                  borderRadius: 10,
+                  marginTop: 10,
+                  opacity: saving ? 0.8 : 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>
+                    Salvar alterações
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          };
+          return <SaveButton />;
+        })()
+      }
     </ScrollView>
   );
 }

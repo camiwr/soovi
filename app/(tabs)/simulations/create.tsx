@@ -81,9 +81,38 @@ export default function CreateSimulationScreen() {
                     />
                 </View>
 
-                <TouchableOpacity onPress={onSubmit} style={{ backgroundColor: "#16a34a", padding: 14, borderRadius: 10 }}>
-                    <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>Simular</Text>
-                </TouchableOpacity>
+                {(() => {
+                    const SubmitButton: React.FC = () => {
+                        const [submitting, setSubmitting] = React.useState(false);
+                        const handle = async () => {
+                            try {
+                                setSubmitting(true);
+                                await onSubmit();
+                            } finally {
+                                setSubmitting(false);
+                            }
+                        };
+                        return (
+                            <TouchableOpacity
+                                onPress={handle}
+                                disabled={submitting}
+                                style={{
+                                    backgroundColor: "#16a34a",
+                                    padding: 14,
+                                    borderRadius: 10,
+                                    opacity: submitting ? 0.8 : 1
+                                }}
+                            >
+                                {submitting ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>Simular</Text>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    };
+                    return <SubmitButton />;
+                })()}
             </ScrollView>
         </View>
     );
