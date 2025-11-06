@@ -17,6 +17,9 @@ import { decodeJwt } from "../../services/jwt";
 
 import FormTextInput from "../../components/FormTextInput";
 import PrimaryButton from "../../components/PrimaryButton";
+import SooviLogo from '../../assets/images/LOGO_SOOVI_AZUL.svg';
+const TouchableOpacity = require('react-native').TouchableOpacity;
+const Feather = require('react-native-vector-icons/Feather').default;
 
 const schema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -30,10 +33,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function waitForConsistentMeStrict({
   accessToken,
   expectedEmail,
-  maxDurationMs = 15000,  
+  maxDurationMs = 15000,
   baseDelayMs = 200,
   factor = 1.9,
-  warmupMs = 250,         
+  warmupMs = 250,
 }: {
   accessToken: string;
   expectedEmail: string;
@@ -60,7 +63,7 @@ async function waitForConsistentMeStrict({
     const jitter = Math.floor(Math.random() * 60);
     await sleep(delay + jitter);
     elapsed += delay + jitter;
-    delay = Math.min(Math.floor(delay * factor), 1400); 
+    delay = Math.min(Math.floor(delay * factor), 1400);
   }
 
   throw new Error("Timeout esperando consistência do /users/me.");
@@ -156,23 +159,45 @@ export default function SignIn() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
           <View style={{ flex: 1, padding: 20, justifyContent: "center", backgroundColor: "#F9FAFB" }}>
-            <View style={{ alignItems: 'center', marginBottom: 48 }}>
-              <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#3B82F6', marginBottom: 8 }}>soovi</Text>
-              <Text style={{ fontSize: 16, color: '#6B7280' }}>Bem-vindo de volta</Text>
+            <View style={{ justifyContent: 'center', alignItems: 'center', bottom: 30}}>
+              <SooviLogo width={200} height={60} />
+              <Text style={{ fontSize: 16, color: '#6B7280', bottom: 15, top: 1 }}>Bem-vindo de volta</Text>
             </View>
+              <FormTextInput name="email" control={control} placeholder="E-mail" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
 
-            <FormTextInput name="email" control={control} placeholder="E-mail" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
-            <FormTextInput name="password" control={control} placeholder="Senha" secureTextEntry />
+              {(() => {
+                const [showPassword, setShowPassword] = React.useState(false);
 
-            <PrimaryButton title="Entrar" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
+                return (
+                  <View style={{ position: 'relative', justifyContent: 'center' }}>
+                    <FormTextInput
+                      name="password"
+                      control={control}
+                      placeholder="Senha"
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                    />
 
-            <View style={{ marginTop: 16, flexDirection: "row", alignItems: "center" }}>
-              <Text>Não tem conta? </Text>
-              <Link href="/(auth)/register" asChild>
-                <Text style={{ color: "#2563EB", fontWeight: "700" }}>Cadastre-se</Text>
-              </Link>
+                    <TouchableOpacity
+                      onPress={() => setShowPassword((s: boolean) => !s)}
+                      activeOpacity={0.7}
+                      style={{ position: 'absolute', right: 12, top: 5, height: 40, justifyContent: 'center' }}
+                    >
+                      <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })()}
+
+              <PrimaryButton title="Entrar" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
+
+              <View style={{ marginTop: 16, flexDirection: "row", alignItems: "center" }}>
+                <Text>Não tem conta? </Text>
+                <Link href="/(auth)/register" asChild>
+                  <Text style={{ color: "#2563EB", fontWeight: "700" }}>Cadastre-se</Text>
+                </Link>
+              </View>
             </View>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaProvider >
