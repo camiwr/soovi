@@ -1,3 +1,4 @@
+// app/(tabs)/areas/[id].tsx
 import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, TouchableOpacity, Alert, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -39,11 +40,12 @@ export default function AreaDetails() {
       {
         text: "Excluir", style: "destructive", onPress: async () => {
           try {
-            await deleteArea(String(id), user!.id);
+            // CORREÇÃO: Chamada atualizada para NÃO enviar 'user!.id'
+            await deleteArea(String(id));
             Alert.alert("Sucesso", "Área excluída");
             router.replace("/(tabs)/areas");
           } catch (e: any) {
-            Alert.alert("Erro", msg(e));
+            Alert.alert("Erro de Deleção", msg(e));
             console.log("AREAS DELETE ERROR:", e?.response?.status, e?.response?.data);
           }
         }
@@ -60,7 +62,10 @@ export default function AreaDetails() {
       <Text>Área total: {area.total_area_hectare} ha</Text>
       {area.registration_number ? <Text>Matrícula: {area.registration_number}</Text> : null}
       {area.location ? <Text>Localização: {area.location}</Text> : null}
-      {area.lot_size != null ? <Text>Tamanho do lote: {area.lot_size} m²</Text> : null}
+      
+      {/* Mantendo a correção para 'lot_size' string */}
+      {area.lot_size ? <Text>Tamanho do lote: {area.lot_size}</Text> : null}
+
       <Text style={{ color: "#64748b", marginTop: 8 }}>Criada em: {new Date(area.created_at).toLocaleString()}</Text>
 
       <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>

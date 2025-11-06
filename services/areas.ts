@@ -1,3 +1,4 @@
+// services/areas.ts
 import { api } from "@/services/client";
 import type { Area, CreateAreaDTO, UpdateAreaDTO } from "@/types/area";
 
@@ -17,24 +18,24 @@ export async function getArea(id: string): Promise<Area> {
   return data;
 }
 
+// ESTE ESTÁ FUNCIONANDO - NÃO MEXER
 export async function createArea(payload: CreateAreaDTO & { owner_id: string }): Promise<Area> {
   const { data } = await api.post<Area>("/area", payload);
   return data;
 }
 
-export async function updateArea(id: string, payload: UpdateAreaDTO, ownerId: string): Promise<Area> {
-  const { data } = await api.patch<Area>(`/area/${id}`, {
-    ...payload,
-    owner_id: ownerId, 
-  });
+// CORREÇÃO: Removido 'ownerId' dos argumentos e do corpo do patch.
+// O backend deve usar o token para autorização.
+export async function updateArea(id: string, payload: UpdateAreaDTO): Promise<Area> {
+  const { data } = await api.patch<Area>(`/area/${id}`, payload);
   return data;
 }
 
-
-export async function deleteArea(id: string, ownerId: string): Promise<void> {
+// CORREÇÃO: Removido 'ownerId' dos argumentos e o corpo 'data' da requisição.
+export async function deleteArea(id: string): Promise<void> {
   await api.request({
     method: "DELETE",
     url: `/area/${id}`,
-    data: { owner_id: ownerId }, 
+    // O backend deve identificar o usuário pelo token.
   });
 }

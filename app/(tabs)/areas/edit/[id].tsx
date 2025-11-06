@@ -11,7 +11,6 @@ import { useAuth } from "@/context/AuthContext";
 function msg(err: any) { return err?.response?.data?.message ?? err?.message ?? "Falha na requisição."; }
 
 export default function EditAreaScreen() {
-  // 🔹 hooks no topo
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const router = useRouter();
@@ -50,15 +49,20 @@ export default function EditAreaScreen() {
         return;
       }
       const payload = draftRef.current;
-      if (!payload?.description || !payload?.total_area_hectare) {
-        Alert.alert("Atenção", "Preencha descrição e área total (ha).");
+      
+      // Validação mantida (corrigida anteriormente)
+      if (!payload?.description || !payload?.total_area_hectare || !payload?.lot_size) {
+        Alert.alert("Atenção", "Preencha descrição, área total (ha) e tamanho do lote.");
         return;
       }
-      const updated = await updateArea(String(id), payload, user.id);
+
+      // CORREÇÃO: Chamada atualizada para NÃO enviar 'user.id'
+      const updated = await updateArea(String(id), payload);
+      
       Alert.alert("Sucesso", "Área atualizada!");
       router.replace({ pathname: "/(tabs)/areas/[id]", params: { id: updated.id } });
     } catch (e: any) {
-      Alert.alert("Erro", msg(e));
+      Alert.alert("Erro de Atualização", msg(e));
       console.log("AREAS UPDATE ERROR:", e?.response?.status, e?.response?.data);
     }
   };
@@ -73,6 +77,11 @@ export default function EditAreaScreen() {
       <Text>Área não encontrada.</Text>
     </View>;
   }
+  
+  // Mantendo as correções dos DTOs que fizemos antes
+  const initialLotSize = typeof area.lot_size === "string" ? area.lot_size : "";
+  const initialPrice = area.suggested_lot_price != null ? String(area.suggested_lot_price) : "";
+
 
   return (
     <KeyboardAvoidingView
@@ -90,11 +99,8 @@ export default function EditAreaScreen() {
             total_area_hectare: area.total_area_hectare,
             registration_number: area.registration_number ?? "",
             location: area.location ?? "",
-            lot_size: typeof area.lot_size === "number"
-              ? area.lot_size
-              : (typeof area.lot_size === "string" && (area.lot_size as string).trim() !== ""
-                ? (isNaN(Number(area.lot_size as string)) ? undefined : Number(area.lot_size as string))
-                : undefined),
+            lot_size: initialLotSize,
+            suggested_lot_price: area.suggested_lot_price ?? undefined,
           }}
           onChange={onChange}
         />

@@ -58,10 +58,13 @@ export default function AreasIndex() {
         onPress: async () => {
           try {
             if (!user?.id) throw new Error("Usuário não autenticado.");
-            await deleteArea(area.id, user.id);
+            
+            // CORREÇÃO: Chamada atualizada para NÃO enviar 'user.id'
+            await deleteArea(area.id);
+            
             setItems((prev) => prev.filter((a) => a.id !== area.id));
           } catch (e: any) {
-            Alert.alert("Erro", errMsg(e));
+            Alert.alert("Erro de Deleção", errMsg(e));
             console.log("AREAS DELETE ERROR:", e?.response?.status, e?.response?.data);
           }
         },
