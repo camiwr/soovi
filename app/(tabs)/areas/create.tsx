@@ -1,5 +1,4 @@
-// app/(tabs)/areas/create.tsx
-import React, { useRef } from "react";
+import React, { useState } from "react";
 import {
   Text,
   TouchableOpacity,
@@ -7,41 +6,40 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
+  ActivityIndicator,
+  View,
+  TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AreaForm from "@/components/areas/AreaForm";
 import { createArea } from "@/services/areas";
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
+import type { CreateAreaDTO } from "@/types/area";
 
-// (Componente SubmitButton que movemos anteriormente fica aqui - sem alterações)
-const SubmitButton: React.FC<{
-  onPress: () => Promise<void>;
-}> = ({ onPress }) => {
-  const [loading, setLoading] = React.useState(false);
+// Helper para tratar mensagens de erro
+function errMsg(e: any) {
+  const msg = e?.response?.data?.message;
+  if (msg) {
+    return Array.isArray(msg) ? msg.join('\n') : String(msg);
+  }
+  return e?.message ?? "Falha ao criar.";
+}
 
-  const handlePress = async () => {
-    setLoading(true);
-    try {
-      await onPress();
-    } finally {
-      setLoading(false);
-    }
-  };
-
+// Helper: Componente de botão para o seletor (definido localmente)
+const LotSizeButton: React.FC<{
+  label: string;
+  value: string;
+  current: string;
+  onPress: (value: string) => void;
+}> = ({ label, value, current, onPress }) => {
+  const isSelected = value === current;
   return (
     <TouchableOpacity
-      onPress={handlePress}
-      disabled={loading}
-      style={{
-        backgroundColor: "#16a34a",
-        padding: 14,
-        borderRadius: 10,
-        opacity: loading ? 0.6 : 1,
-        marginTop: 16,
-      }}
+      style={[s.lotButton, isSelected && s.lotButtonSelected]}
+      onPress={() => onPress(value)}
     >
-      <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>
-        {loading ? "Salvando..." : "Salvar"}
+      <Text style={[s.lotButtonText, isSelected && s.lotButtonTextSelected]}>
+        {label}
       </Text>
     </TouchableOpacity>
   );
@@ -50,104 +48,201 @@ const SubmitButton: React.FC<{
 export default function CreateAreaScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const draftRef = useRef<any>({});
+  const [loading, setLoading] = useState(false);
 
-  const onChange = (data: any) => {
-    draftRef.current = data;
-  };
+  // Estados do formulário (antes em AreaForm)
+  const [description, setDescription] = useState("");
+  const [totalArea, setTotalArea] = useState("");
+  const [registration, setRegistration] = useState("");
+  const [location, setLocation] = useState("");
+  const [suggestedLotPrice, setSuggestedLotPrice] = useState("");
+  const [lotSize, setLotSize] = useState(""); // "TENx20" | "TENx30"
 
   const onSubmit = async () => {
-    // --- INÍCIO DO DEBUG ---
-    console.log("=============================");
-    console.log("[DEBUG] Iniciando onSubmit para criar área...");
-    
-    const d = draftRef.current;
-    console.log("[DEBUG] Dados do formulário (draftRef):", JSON.stringify(d, null, 2));
-    
-    if (!user?.id) {
-      console.log("[DEBUG] ERRO: Usuário não autenticado.");
-      console.log("=============================");
-      Alert.alert("Atenção", "Faça login novamente para criar áreas.");
-      return;
-    }
-
-    // Recriando o payload final que será enviado
-    const payloadFinal = { ...d, owner_id: user.id };
-    
-    // Validação do frontend
-    if (
-      !payloadFinal?.description ||
-      !payloadFinal?.lot_size ||
-      !(Number(payloadFinal?.total_area_hectare) > 0)
-    ) {
-      console.log("[DEBUG] ERRO: Falha na validação do frontend.");
-      console.log("Campos incompletos:", {
-        description: payloadFinal?.description,
-        lot_size: payloadFinal?.lot_size,
-        total_area_hectare: payloadFinal?.total_area_hectare,
-      });
-      console.log("=============================");
-      Alert.alert(
-        "Atenção",
-        "Preencha descrição, tamanho do lote e uma área total (ha) válida."
-      );
-      return;
-    }
-    
+    setLoading(true);
     try {
-      console.log("[DEBUG] Enviando para API (/area) o payload:", JSON.stringify(payloadFinal, null, 2));
-
-      // Enviando o payload com owner_id
-      const created = await createArea(payloadFinal);
+      if (!user?.id) {
+        Alert.alert("Atenção", "Faça login novamente para criar áreas.");
+        setLoading(false);
+        return;
+      }
       
-      console.log("[DEBUG] SUCESSO! Resposta da API:", JSON.stringify(created, null, 2));
-      console.log("=============================");
+      // Criar o payload a partir dos estados
+      const payload: CreateAreaDTO = {
+        description: description.trim(),
+        total_area_hectare: Number(totalArea) || 0,
+        lot_size: lotSize,
+        registration_number: registration.trim() || undefined,
+        location: location.trim() || undefined,
+        suggested_lot_price: suggestedLotPrice ? Number(suggestedLotPrice) : undefined,
+      };
+
+      // Validação do frontend
+      if (
+        !payload.description ||
+        !payload.lot_size ||
+        !(payload.total_area_hectare > 0)
+      ) {
+        Alert.alert(
+          "Atenção",
+          "Preencha descrição, tamanho do lote e uma área total (ha) válida."
+        );
+        setLoading(false);
+        return;
+      }
+      
+      // Enviando o payload E o 'owner_id'
+      const created = await createArea(payload, user.id);
       
       Alert.alert("Sucesso", "Área criada com sucesso!");
       router.replace({ pathname: "/(tabs)/areas/[id]", params: { id: created.id } });
     
     } catch (e: any) {
-      // --- DEBUG DETALHADO DO ERRO ---
-      console.log("[DEBUG] ERRO 400 (ou outro) NA API");
-      if (e.response) {
-        // Erro vindo do Axios (com resposta do servidor)
-        console.log("Status:", e.response.status);
-        console.log("Data (Erro do Backend):", JSON.stringify(e.response.data, null, 2));
-      } else {
-        // Erro genérico (rede, etc)
-        console.log("Erro (sem resposta da API):", e.message);
-      }
-      console.log("=============================");
-      
-      let detailedMessage = e.message ?? "Não foi possível criar.";
-      if (e.response?.data?.message) {
-         if (Array.isArray(e.response.data.message)) {
-           detailedMessage = e.response.data.message.join('\n'); // Muito comum em erros de validação (NestJS/Zod)
-         } else if (typeof e.response.data.message === 'object') {
-           detailedMessage = JSON.stringify(e.response.data.message);
-         } else {
-           detailedMessage = e.response.data.message;
-         }
-      } else if (e.response?.data) {
-        detailedMessage = JSON.stringify(e.response.data);
-      }
-      
-      Alert.alert("Erro ao Criar (400)", detailedMessage);
+      Alert.alert("Erro ao Criar", errMsg(e));
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={s.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 60 }}
+        contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <AreaForm onChange={onChange} />
-        <SubmitButton onPress={onSubmit} />
+        {/* Campos do Formulário */}
+        <Text style={s.label}>Descrição *</Text>
+        <TextInput
+          style={s.input}
+          placeholder="ex.: Loteamento Santa Rita"
+          value={description}
+          onChangeText={setDescription}
+          autoCapitalize="sentences"
+        />
+        
+        <Text style={s.label}>Área total (hectares) *</Text>
+        <TextInput
+          style={s.input}
+          placeholder="ex.: 12.5"
+          value={totalArea}
+          onChangeText={setTotalArea}
+          keyboardType="decimal-pad"
+        />
+
+        <Text style={s.label}>Tamanho do lote *</Text>
+        <View style={s.lotSelector}>
+          <LotSizeButton
+            label="10x20"
+            value="TENx20"
+            current={lotSize}
+            onPress={setLotSize}
+          />
+          <LotSizeButton
+            label="10x30"
+            value="TENx30"
+            current={lotSize}
+            onPress={setLotSize}
+          />
+          {!!lotSize && (
+            <TouchableOpacity onPress={() => setLotSize("")} style={{ padding: 8 }}>
+              <Text style={{ color: '#9CA3AF' }}>Limpar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <Text style={s.label}>Matrícula (opcional)</Text>
+        <TextInput
+          style={s.input}
+          placeholder="ex.: 12345-ABC"
+          value={registration}
+          onChangeText={setRegistration}
+        />
+        
+        <Text style={s.label}>Localização (opcional)</Text>
+        <TextInput
+          style={s.input}
+          placeholder="Endereço, cidade ou coordenadas"
+          value={location}
+          onChangeText={setLocation}
+        />
+        
+        <Text style={s.label}>Valor sugerido p/ lote (R$)</Text>
+        <TextInput
+          style={s.input}
+          placeholder="ex.: 15000"
+          value={suggestedLotPrice}
+          onChangeText={setSuggestedLotPrice}
+          keyboardType="decimal-pad"
+        />
+        
+        {/* Botão de Salvar */}
+        <TouchableOpacity
+          onPress={onSubmit}
+          disabled={loading}
+          style={[s.button, { backgroundColor: "#16a34a" }]}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={s.buttonText}>Salvar Área</Text>
+          )}
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+// Estilos
+const s = StyleSheet.create({
+  container: { flex: 1 },
+  scroll: { padding: 16, gap: 12, paddingBottom: 60 },
+  label: { fontSize: 14, fontWeight: "600" },
+  input: {
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    fontSize: 16,
+  },
+  lotSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  lotButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  lotButtonSelected: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  lotButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  lotButtonTextSelected: {
+    color: '#fff',
+  },
+  button: {
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: { 
+    color: "#fff", fontWeight: "700", textAlign: "center", fontSize: 16 
+  },
+});

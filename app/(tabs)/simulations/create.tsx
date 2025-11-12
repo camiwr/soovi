@@ -4,14 +4,14 @@ import type { Area } from "@/types/area";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import InputSpinner from "react-native-input-spinner";
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function CreateSimulationScreen() {
     const router = useRouter();
     const { areaId } = useLocalSearchParams<{ areaId: string }>();
     const [area, setArea] = useState<Area | null>(null);
     const [loading, setLoading] = useState(true);
-    const [years, setYears] = useState("5"); // padrão 5
+    const [years, setYears] = useState("5");
 
     useEffect(() => {
         (async () => {

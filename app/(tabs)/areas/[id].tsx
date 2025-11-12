@@ -1,90 +1,156 @@
-// app/(tabs)/areas/[id].tsx
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, TouchableOpacity, Alert, ScrollView } from "react-native";
+import { View, Text, ActivityIndicator, TouchableOpacity, Alert, ScrollView, StyleSheet } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { getArea, deleteArea } from "@/services/areas";
 import type { Area } from "@/types/area";
 import { useAuth } from "@/context/AuthContext";
 
-function msg(err: any) { return err?.response?.data?.message ?? err?.message ?? "Falha na requisição."; }
+// Função helper para tratar mensagens de erro
+function errMsg(e: any) {
+  const msg = e?.response?.data?.message;
+  if (msg) {
+    return Array.isArray(msg) ? msg.join('\n') : String(msg);
+  }
+  return e?.message ?? "Falha na requisição.";
+}
 
 export default function AreaDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useAuth(); 
+  const { user } = useAuth(); // Pega o usuário logado
   const [area, setArea] = useState<Area | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Efeito para buscar os dados da área
   useEffect(() => {
+    if (!id) return;
     (async () => {
       try {
+        setLoading(true);
         const data = await getArea(String(id));
         setArea(data);
       } catch (e: any) {
-        Alert.alert("Erro", msg(e));
+        Alert.alert("Erro", errMsg(e));
       } finally {
         setLoading(false);
       }
     })();
   }, [id]);
 
+  // Verifica se o usuário logado é o dono da área
   const isOwner = !!area && !!user?.id && area.owner_id === user.id;
 
+  // Função de Deletar
   const handleDelete = () => {
-    if (!isOwner) {
-      Alert.alert("Permissão", "Você não é o proprietário desta área.");
-      return;
+    // Validação extra
+    if (!isOwner || !id || !user?.id) {
+       Alert.alert("Atenção", "Você não tem permissão para esta ação ou não está logado.");
+       return;
     }
-    Alert.alert("Confirmar", "Deseja excluir esta área?", [
+    
+    Alert.alert("Confirmar Exclusão", "Deseja realmente excluir esta área?", [
       { text: "Cancelar", style: "cancel" },
       {
         text: "Excluir", style: "destructive", onPress: async () => {
           try {
-            // CORREÇÃO: Chamada atualizada para NÃO enviar 'user!.id'
-            await deleteArea(String(id));
+            // CORREÇÃO: Passa o 'id' da área e o 'user.id' (owner_id)
+            await deleteArea(String(id), user.id);
+            
             Alert.alert("Sucesso", "Área excluída");
-            router.replace("/(tabs)/areas");
+            router.replace("/(tabs)/areas"); // Volta para a lista
           } catch (e: any) {
-            Alert.alert("Erro de Deleção", msg(e));
-            console.log("AREAS DELETE ERROR:", e?.response?.status, e?.response?.data);
+            Alert.alert("Erro ao Excluir", errMsg(e));
           }
         }
       }
     ]);
   };
 
-  if (loading) return <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}><ActivityIndicator /></View>;
-  if (!area) return <View style={{ padding: 16 }}><Text>Área não encontrada.</Text></View>;
+  if (loading) return <View style={s.center}><ActivityIndicator /></View>;
+  if (!area) return <View style={s.container}><Text>Área não encontrada.</Text></View>;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
-      <Text style={{ fontSize: 20, fontWeight: "800" }}>{area.description}</Text>
-      <Text>Área total: {area.total_area_hectare} ha</Text>
-      {area.registration_number ? <Text>Matrícula: {area.registration_number}</Text> : null}
-      {area.location ? <Text>Localização: {area.location}</Text> : null}
+    <ScrollView contentContainerStyle={s.container}>
+      <Text style={s.title}>{area.description}</Text>
       
-      {/* Mantendo a correção para 'lot_size' string */}
-      {area.lot_size ? <Text>Tamanho do lote: {area.lot_size}</Text> : null}
+      <View style={s.infoBox}>
+        <Text style={s.infoLabel}>Área Total (ha)</Text>
+        <Text style={s.infoValue}>{area.total_area_hectare} ha</Text>
+      </View>
+      
+      <View style={s.infoBox}>
+        <Text style={s.infoLabel}>Tamanho do Lote</Text>
+        <Text style={s.infoValue}>{area.lot_size}</Text>
+      </View>
 
-      <Text style={{ color: "#64748b", marginTop: 8 }}>Criada em: {new Date(area.created_at).toLocaleString()}</Text>
+      {area.registration_number && (
+        <View style={s.infoBox}>
+          <Text style={s.infoLabel}>Matrícula</Text>
+          <Text style={s.infoValue}>{area.registration_number}</Text>
+        </View>
+      )}
 
-      <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
+      {area.location && (
+        <View style={s.infoBox}>
+          <Text style={s.infoLabel}>Localização</Text>
+          <Text style={s.infoValue}>{area.location}</Text>
+        </View>
+      )}
+
+      {area.suggested_lot_price != null && (
+         <View style={s.infoBox}>
+          <Text style={s.infoLabel}>Valor Sugerido (Lote)</Text>
+          <Text style={s.infoValue}>R$ {area.suggested_lot_price.toLocaleString('pt-BR')}</Text>
+        </View>
+      )}
+
+      <Text style={s.date}>Criada em: {new Date(area.created_at).toLocaleString()}</Text>
+
+      {/* Botões de Ação */}
+      <View style={s.buttonRow}>
         <TouchableOpacity
           onPress={() => router.push({ pathname: "/(tabs)/areas/edit/[id]", params: { id: area.id } })}
-          style={{ padding: 12, backgroundColor: isOwner ? "#f1f5f9" : "#e5e7eb", borderRadius: 10 }}
+          style={[s.button, s.editButton, !isOwner && s.disabledButton]}
           disabled={!isOwner}
         >
-          <Text style={{ color: isOwner ? "#000" : "#9ca3af" }}>Editar</Text>
+          <Text style={[s.buttonText, s.editText, !isOwner && s.disabledText]}>Editar</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={handleDelete}
-          style={{ padding: 12, backgroundColor: isOwner ? "#fee2e2" : "#e5e7eb", borderRadius: 10 }}
+          style={[s.button, s.deleteButton, !isOwner && s.disabledButton]}
           disabled={!isOwner}
         >
-          <Text style={{ color: isOwner ? "#b91c1c" : "#9ca3af" }}>Excluir</Text>
+          <Text style={[s.buttonText, s.deleteText, !isOwner && s.disabledText]}>Excluir</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
+
+const s = StyleSheet.create({
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: { padding: 16, gap: 10, paddingBottom: 40 },
+  title: { fontSize: 22, fontWeight: "800", marginBottom: 10 },
+  infoBox: { 
+    backgroundColor: '#fff', padding: 12, borderRadius: 8, 
+    borderWidth: 1, borderColor: '#e5e7eb' 
+  },
+  infoLabel: { fontSize: 13, color: '#6B7280' },
+  infoValue: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  date: { color: "#64748b", marginTop: 8, fontSize: 12 },
+  buttonRow: { flexDirection: "row", gap: 12, marginTop: 16 },
+  button: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  editButton: { backgroundColor: "#f1f5f9", borderWidth: 1, borderColor: '#e5e7eb' },
+  editText: { color: "#000", fontWeight: '600' },
+  deleteButton: { backgroundColor: "#fee2e2" },
+  deleteText: { color: "#b91c1c", fontWeight: '600' },
+  disabledButton: { backgroundColor: "#f3f4f6", borderWidth: 1, borderColor: '#e5e7eb' },
+  disabledText: { color: "#9ca3af" },
+  buttonText: { fontSize: 15 },
+});

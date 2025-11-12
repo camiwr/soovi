@@ -1,4 +1,3 @@
-// app/(tabs)/areas/index.tsx
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
@@ -8,9 +7,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { listAreasByOwner, deleteArea } from "@/services/areas";
+import { listAreasByOwner } from "@/services/areas"; 
 import type { Area } from "@/types/area";
 import { useAuth } from "@/context/AuthContext";
 
@@ -27,13 +27,16 @@ export default function AreasIndex() {
 
   const load = useCallback(async () => {
     try {
-      if (!user?.id) throw new Error("Usuário não autenticado.");
+      if (!user?.id) {
+         setItems([]);
+         return;
+      }
       setLoading(true);
-      const rows = await listAreasByOwner(user.id);
+      // Chama a listagem passando o ID do usuário
+      const rows = await listAreasByOwner(user.id); 
       setItems(rows);
     } catch (e: any) {
-      Alert.alert("Erro", errMsg(e));
-      console.log("AREAS LIST ERROR:", e?.response?.status, e?.response?.data);
+      Alert.alert("Erro ao Listar Áreas", errMsg(e));
     } finally {
       setLoading(false);
     }
@@ -49,111 +52,74 @@ export default function AreasIndex() {
     setRefreshing(false);
   };
 
-  const handleDelete = (area: Area) => {
-    Alert.alert("Confirmar", `Excluir a área “${area.description}”?`, [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            if (!user?.id) throw new Error("Usuário não autenticado.");
-            
-            // CORREÇÃO: Chamada atualizada para NÃO enviar 'user.id'
-            await deleteArea(area.id);
-            
-            setItems((prev) => prev.filter((a) => a.id !== area.id));
-          } catch (e: any) {
-            Alert.alert("Erro de Deleção", errMsg(e));
-            console.log("AREAS DELETE ERROR:", e?.response?.status, e?.response?.data);
-          }
-        },
-      },
-    ]);
-  };
-
-  if (loading) {
+  if (loading && !refreshing) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={s.center}>
         <ActivityIndicator />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, padding: 16, gap: 12 }}>
+    <View style={s.container}>
       <TouchableOpacity
         onPress={() => router.push("/(tabs)/areas/create")}
-        style={{ backgroundColor: "#2563eb", padding: 12, borderRadius: 10 }}
+        style={s.primaryButton}
       >
-        <Text style={{ color: "#fff", fontWeight: "700", textAlign: "center" }}>
+        <Text style={s.primaryButtonText}>
           + Nova Área
         </Text>
       </TouchableOpacity>
 
-      {items.length === 0 ? (
-        <Text>Nenhuma área cadastrada ainda.</Text>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          renderItem={({ item }) => {
-            const isOwner = !!user?.id && item.owner_id === user.id;
-
-            return (
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#eee",
-                  borderRadius: 10,
-                  padding: 12,
-                  marginBottom: 10,
-                  backgroundColor: "#fff",
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push({ pathname: "/(tabs)/areas/[id]", params: { id: item.id } })
-                  }
-                >
-                  <Text style={{ fontSize: 16, fontWeight: "700" }}>{item.description}</Text>
-                  <Text style={{ marginTop: 4 }}>Área total: {item.total_area_hectare} ha</Text>
-                  {item.location ? <Text>Localização: {item.location}</Text> : null}
-                </TouchableOpacity>
-
-                <View style={{ flexDirection: "row", gap: 12, marginTop: 10 }}>
-                  <TouchableOpacity
-                    onPress={() =>
-                      router.push({ pathname: "/(tabs)/areas/edit/[id]", params: { id: item.id } })
-                    }
-                    style={{
-                      padding: 10,
-                      backgroundColor: isOwner ? "#f1f5f9" : "#e5e7eb",
-                      borderRadius: 8,
-                    }}
-                    disabled={!isOwner}
-                  >
-                    <Text style={{ color: isOwner ? "#000" : "#9ca3af" }}>Editar</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => handleDelete(item)}
-                    style={{
-                      padding: 10,
-                      backgroundColor: isOwner ? "#fee2e2" : "#e5e7eb",
-                      borderRadius: 8,
-                    }}
-                    disabled={!isOwner}
-                  >
-                    <Text style={{ color: isOwner ? "#b91c1c" : "#9ca3af" }}>Excluir</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          }}
-        />
-      )}
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.id}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListEmptyComponent={<Text style={s.emptyText}>Nenhuma área cadastrada.</Text>}
+        renderItem={({ item }) => (
+          <View style={s.card}>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({ pathname: "/(tabs)/areas/[id]", params: { id: item.id } })
+              }
+            >
+              <Text style={s.cardTitle}>{item.description}</Text>
+              <Text style={s.cardInfo}>Área total: {item.total_area_hectare} ha</Text>
+              <Text style={s.cardInfo}>Tamanho do lote: {item.lot_size}</Text>
+              {item.location ? <Text style={s.cardInfo}>Local: {item.location}</Text> : null}
+            </TouchableOpacity>
+          </View>
+        )}
+      />
     </View>
   );
 }
+
+// Estilos
+const s = StyleSheet.create({
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: { flex: 1, padding: 16, gap: 12 },
+  primaryButton: { 
+    backgroundColor: "#2563eb", padding: 12, borderRadius: 10 
+  },
+  primaryButtonText: { 
+    color: "#fff", fontWeight: "700", textAlign: "center" 
+  },
+  emptyText: { 
+    textAlign: "center", marginTop: 20, color: "#6B7280"
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: "#eee",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    backgroundColor: "#fff",
+  },
+  cardTitle: { 
+    fontSize: 16, fontWeight: "700" 
+  },
+  cardInfo: { 
+    marginTop: 4, color: "#374151"
+  },
+});

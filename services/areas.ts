@@ -1,10 +1,11 @@
-// services/areas.ts
 import { api } from "@/services/client";
 import type { Area, CreateAreaDTO, UpdateAreaDTO } from "@/types/area";
 
-// LISTAR (ok)
+// ... (listAreasByOwner e getArea permanecem iguais) ...
 export async function listAreasByOwner(ownerId: string): Promise<Area[]> {
-  const { data } = await api.get("/area/search", { params: { owner_id: ownerId } });
+  const { data } = await api.get("/area/search", { 
+    params: { owner_id: ownerId } 
+  });
   if (Array.isArray(data)) return data;
   // @ts-ignore
   if (Array.isArray(data?.areas)) return data.areas;
@@ -18,24 +19,27 @@ export async function getArea(id: string): Promise<Area> {
   return data;
 }
 
-// ESTE ESTÁ FUNCIONANDO - NÃO MEXER
-export async function createArea(payload: CreateAreaDTO & { owner_id: string }): Promise<Area> {
-  const { data } = await api.post<Area>("/area", payload);
+// ... (createArea permanece igual) ...
+export async function createArea(payload: CreateAreaDTO, owner_id: string): Promise<Area> {
+  const finalPayload = { ...payload, owner_id };
+  const { data } = await api.post<Area>("/area", finalPayload);
   return data;
 }
 
-// CORREÇÃO: Removido 'ownerId' dos argumentos e do corpo do patch.
-// O backend deve usar o token para autorização.
-export async function updateArea(id: string, payload: UpdateAreaDTO): Promise<Area> {
-  const { data } = await api.patch<Area>(`/area/${id}`, payload);
+/* * CORREÇÃO 1: updateArea
+ * Agora aceita 'owner_id' e o envia no payload do PATCH.
+ */
+export async function updateArea(id: string, payload: UpdateAreaDTO, owner_id: string): Promise<Area> {
+  const finalPayload = { ...payload, owner_id };
+  const { data } = await api.patch<Area>(`/area/${id}`, finalPayload);
   return data;
 }
 
-// CORREÇÃO: Removido 'ownerId' dos argumentos e o corpo 'data' da requisição.
-export async function deleteArea(id: string): Promise<void> {
-  await api.request({
-    method: "DELETE",
-    url: `/area/${id}`,
-    // O backend deve identificar o usuário pelo token.
+/* * CORREÇÃO 2: deleteArea
+ * Agora aceita 'owner_id' e o envia no corpo (data) da requisição DELETE.
+ */
+export async function deleteArea(id: string, owner_id: string): Promise<void> {
+  await api.delete(`/area/${id}`, {
+    data: { owner_id } // Envia o owner_id no corpo do DELETE
   });
 }
