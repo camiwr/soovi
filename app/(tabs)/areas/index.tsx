@@ -81,12 +81,12 @@ export default function AreasIndex() {
           + Nova Área
         </Text>
       </TouchableOpacity>
-      <TouchableOpacity
+      {/* <TouchableOpacity
         onPress={load}
         style={[s.primaryButton, { backgroundColor: "#4CAF50" }]} 
       >
         <Text style={s.primaryButtonText}>Recarregar Lista</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
 
       <FlatList

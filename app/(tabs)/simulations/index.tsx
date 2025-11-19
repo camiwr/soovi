@@ -23,7 +23,7 @@ export default function SimulationsIndex() {
       setLoading(true);
       const [s, a] = await Promise.all([
         listSimulations(),
-        user?.id ? listAreasByOwner(user.id) : Promise.resolve<Area[]>([])
+        user?.id ? listAreasByOwner(user.id, { timestamp: Date.now() }) : Promise.resolve<Area[]>([])
       ]);
       setAreas(a);
       // filtra pelo conjunto das suas áreas
