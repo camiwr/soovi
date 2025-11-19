@@ -1,18 +1,19 @@
+import { useAuth } from "@/context/AuthContext";
+import { listAreasByOwner } from "@/services/areas";
+import type { Area } from "@/types/area";
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
   Alert,
+  FlatList,
+  RefreshControl,
   StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { listAreasByOwner } from "@/services/areas"; 
-import type { Area } from "@/types/area";
-import { useAuth } from "@/context/AuthContext";
 
 function errMsg(e: any) {
   return e?.response?.data?.message ?? e?.message ?? "Falha na requisição.";
@@ -26,6 +27,7 @@ export default function AreasIndex() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    const startTime = Date.now(); // Início do tempo
     try {
       if (!user?.id) {
          setItems([]);
@@ -33,18 +35,27 @@ export default function AreasIndex() {
       }
       setLoading(true);
       // Chama a listagem passando o ID do usuário
-      const rows = await listAreasByOwner(user.id); 
-      setItems(rows);
+      const rows = await listAreasByOwner(user.id, { timestamp: Date.now() }); // Adiciona um parâmetro único para evitar cache
+      console.log("Dados retornados pela API:", rows); // Log dos dados retornados
+      setItems([...rows]); // Força a atualização do estado
     } catch (e: any) {
       Alert.alert("Erro ao Listar Áreas", errMsg(e));
     } finally {
       setLoading(false);
+      const endTime = Date.now(); // Fim do tempo
+      console.log(`Tempo para carregar a lista: ${endTime - startTime}ms`); // Log do tempo
     }
   }, [user?.id]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -70,6 +81,13 @@ export default function AreasIndex() {
           + Nova Área
         </Text>
       </TouchableOpacity>
+      <TouchableOpacity
+        onPress={load}
+        style={[s.primaryButton, { backgroundColor: "#4CAF50" }]} 
+      >
+        <Text style={s.primaryButtonText}>Recarregar Lista</Text>
+      </TouchableOpacity>
+
 
       <FlatList
         data={items}

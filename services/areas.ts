@@ -2,7 +2,7 @@ import { api } from "@/services/client";
 import type { Area, CreateAreaDTO, UpdateAreaDTO } from "@/types/area";
 
 // ... (listAreasByOwner e getArea permanecem iguais) ...
-export async function listAreasByOwner(ownerId: string): Promise<Area[]> {
+export async function listAreasByOwner(ownerId: string, p0: { timestamp: number; }): Promise<Area[]> {
   const { data } = await api.get("/area/search", { 
     params: { owner_id: ownerId } 
   });

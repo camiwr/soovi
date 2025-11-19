@@ -11,7 +11,9 @@ export default function CreateSimulationScreen() {
     const { areaId } = useLocalSearchParams<{ areaId: string }>();
     const [area, setArea] = useState<Area | null>(null);
     const [loading, setLoading] = useState(true);
-    const [years, setYears] = useState("5");
+    
+    const [years, setYears] = useState("5"); 
+    const [carency, setCarency] = useState("0"); 
 
     useEffect(() => {
         (async () => {
@@ -27,8 +29,16 @@ export default function CreateSimulationScreen() {
     const onSubmit = async () => {
         try {
             if (!area) throw new Error("Área inválida.");
+            
             const receiving_years = Math.max(1, parseInt(years || "5", 10));
-            const created = await createSimulation({ area_id: area.id, receiving_years });
+            const carency_period = Math.max(0, parseInt(carency || "0", 10));
+
+            const created = await createSimulation({ 
+                area_id: area.id, 
+                receiving_years,
+                carency_period 
+            });
+            
             router.replace({
                 pathname: "/simulations/[id]",
                 params: { id: created.id, data: encodeURIComponent(JSON.stringify(created)) }
@@ -57,21 +67,40 @@ export default function CreateSimulationScreen() {
                     {area.location ? <Text>Localização: {area.location}</Text> : null}
                 </View>
 
-                <View style={{ padding: 12, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#f8fafc" }}>
-                    <Text style={{ fontWeight: "700", marginBottom: 6 }}>Como funciona?</Text>
+                {/* Texto explicativo sobre a Carência */}
+                <View style={{ padding: 12, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#f8fafc", gap: 6 }}>
+                    <Text style={{ fontWeight: "700" }}>O que é a Carência?</Text>
                     <Text style={{ color: "#334155" }}>
-                        A simulação é calculada pelo nosso sistema com parâmetros padrão (infraestrutura, impostos, comissão, etc.).
-                        Você só escolhe o período de recebimento (em anos) e confirma.
+                        O período de carência é o tempo (em anos) desde o início do projeto até o início do recebimento das parcelas.
+                    </Text>
+                    <Text style={{ color: "#334155" }}>
+                        Ex: 2 anos de carência e 7 de recebimento significam que o fluxo de caixa começa apenas no 3º ano e dura 7 anos.
                     </Text>
                 </View>
 
-                {/* Único campo necessário */}
+                
+                {/* Campo de Anos de Recebimento */}
                 <View style={{ gap: 6 }}>
-                    <Text style={{ fontWeight: "600" }}>Anos de recebimento *</Text>
+                    <Text style={{ fontWeight: "600" }}>Anos de Recebimento *</Text>
                     <InputSpinner
                         value={Number(years || 5)}
                         onChange={(num) => setYears(String(num))}
                         min={1}
+                        step={1}
+                        skin="clean"
+                        height={44}
+                        buttonFontSize={18}
+                        inputStyle={{ fontSize: 16 } as any}
+                        style={{ borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, backgroundColor: "#fff" }}
+                    />
+                </View>
+                {/* Campo de Carência */}
+                <View style={{ gap: 6 }}>
+                    <Text style={{ fontWeight: "600" }}>Anos de Carência *</Text>
+                    <InputSpinner
+                        value={Number(carency || 0)}
+                        onChange={(num) => setCarency(String(num))}
+                        min={0} // Permite 0 anos de carência
                         step={1}
                         skin="clean"
                         height={44}
@@ -100,7 +129,8 @@ export default function CreateSimulationScreen() {
                                     backgroundColor: "#16a34a",
                                     padding: 14,
                                     borderRadius: 10,
-                                    opacity: submitting ? 0.8 : 1
+                                    opacity: submitting ? 0.8 : 1,
+                                    marginTop: 10, // Adicionado margin
                                 }}
                             >
                                 {submitting ? (

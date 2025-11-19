@@ -27,11 +27,13 @@ export type Simulation = {
   receiving_years: number;
   annual_receivable: number;
   used_parameters: UsedParameters;
+  carency_period?: number;
 };
 
 export type CreateSimulationDTO = {
   area_id: string;
   receiving_years: number; 
+  carency_period: number; 
 };
 
 export type UpdateSimulationDTO = Partial<CreateSimulationDTO>;
