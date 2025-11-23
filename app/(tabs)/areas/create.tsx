@@ -107,31 +107,32 @@ export default function CreateAreaScreen() {
   return (
     <SafeAreaProvider style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       <KeyboardAwareScrollView
-        contentContainerStyle={s.scroll}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
-        extraScrollHeight={20} // Ajusta a rolagem para evitar sobreposição
+        enableOnAndroid={true}
+        extraScrollHeight={100} // Ajusta a rolagem para evitar sobreposição
       >
         {/* Campos do Formulário */}
-        <Text style={s.label}>Descrição *</Text>
+        <Text style={[s.label, { marginTop: 20 }]}>Descrição *</Text>
         <TextInput
-          style={s.input}
+          style={[s.input, { marginBottom: 15 }]} 
           placeholder="ex.: Loteamento Santa Rita"
           value={description}
           onChangeText={setDescription}
           autoCapitalize="sentences"
         />
         
-        <Text style={s.label}>Área total (hectares) *</Text>
+        <Text style={[s.label, { marginTop: 15 }]}>Área total (hectares) *</Text>
         <TextInput
-          style={s.input}
+          style={[s.input, { marginBottom: 15 }]} 
           placeholder="ex.: 12.5"
           value={totalArea}
           onChangeText={setTotalArea}
           keyboardType="decimal-pad"
         />
 
-        <Text style={s.label}>Tamanho do lote *</Text>
-        <View style={s.lotSelector}>
+        <Text style={[s.label, { marginTop: 15 }]}>Tamanho do lote *</Text>
+        <View style={[s.lotSelector, { marginBottom: 15 }]}> 
           <LotSizeButton
             label="10x20"
             value="TENx20"
@@ -151,23 +152,23 @@ export default function CreateAreaScreen() {
           )}
         </View>
 
-        <Text style={s.label}>Matrícula (opcional)</Text>
+        <Text style={[s.label, { marginTop: 15 }]}>Matrícula (opcional)</Text>
         <TextInput
-          style={s.input}
+          style={[s.input, { marginBottom: 15 }]} 
           placeholder="ex.: 12345-ABC"
           value={registration}
           onChangeText={setRegistration}
         />
         
-        <Text style={s.label}>Localização (opcional)</Text>
+        <Text style={[s.label, { marginTop: 15 }]}>Localização (opcional)</Text>
         <TextInput
-          style={s.input}
+          style={[s.input, { marginBottom: 15 }]}
           placeholder="Endereço, cidade ou coordenadas"
           value={location}
           onChangeText={setLocation}
         />
         
-        <Text style={s.label}>Valor sugerido para o lote (R$)</Text>
+        <Text style={[s.label, { marginBottom: 15 }]}>Valor sugerido para o lote (R$)</Text>
         <TextInputMask
           type="money"
           options={{
@@ -181,7 +182,7 @@ export default function CreateAreaScreen() {
           onChangeText={setSuggestedLotPrice}
           keyboardType="numeric"
           placeholder="Preço sugerido do lote"
-          style={s.input}
+          style={[s.input, { marginBottom: 15 }]}
         />
         
         {/* Botão de Salvar */}
