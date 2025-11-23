@@ -19,6 +19,20 @@ function errMsg(e: any) {
   return e?.response?.data?.message ?? e?.message ?? "Falha na requisição.";
 }
 
+// Função para formatar o tamanho do lote
+function formatLotSize(lotSize: string): string {
+  const sizes: Record<string, { width: number; height: number }> = {
+    TENx20: { width: 10, height: 20 },
+    TENx30: { width: 10, height: 30 },
+  };
+
+  const size = sizes[lotSize];
+  if (!size) return lotSize;
+
+  const area = size.width * size.height;
+  return `${size.width} x ${size.height} = ${area} m²`;
+}
+
 export default function AreasIndex() {
   const router = useRouter();
   const { user } = useAuth();
@@ -103,7 +117,7 @@ export default function AreasIndex() {
             >
               <Text style={s.cardTitle}>{item.description}</Text>
               <Text style={s.cardInfo}>Área total: {item.total_area_hectare} ha</Text>
-              <Text style={s.cardInfo}>Tamanho do lote: {item.lot_size}</Text>
+              <Text style={s.cardInfo}>Tamanho do lote: {formatLotSize(item.lot_size)}</Text>
               {item.location ? <Text style={s.cardInfo}>Local: {item.location}</Text> : null}
             </TouchableOpacity>
           </View>

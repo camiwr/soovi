@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, TouchableOpacity, Alert, ScrollView, StyleSheet } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { getArea, deleteArea } from "@/services/areas";
-import type { Area } from "@/types/area";
 import { useAuth } from "@/context/AuthContext";
+import { deleteArea, getArea } from "@/services/areas";
+import type { Area } from "@/types/area";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 // Função helper para tratar mensagens de erro
 function errMsg(e: any) {
@@ -12,6 +12,20 @@ function errMsg(e: any) {
     return Array.isArray(msg) ? msg.join('\n') : String(msg);
   }
   return e?.message ?? "Falha na requisição.";
+}
+
+// Função para formatar o tamanho do lote
+function formatLotSize(lotSize: string): string {
+  const sizes: Record<string, { width: number; height: number }> = {
+    TENx20: { width: 10, height: 20 },
+    TENx30: { width: 10, height: 30 },
+  };
+
+  const size = sizes[lotSize];
+  if (!size) return lotSize;
+
+  const area = size.width * size.height;
+  return `${area} m²`;
 }
 
 export default function AreaDetails() {
@@ -44,10 +58,10 @@ export default function AreaDetails() {
   const handleDelete = () => {
     // Validação extra
     if (!isOwner || !id || !user?.id) {
-       Alert.alert("Atenção", "Você não tem permissão para esta ação ou não está logado.");
-       return;
+      Alert.alert("Atenção", "Você não tem permissão para esta ação ou não está logado.");
+      return;
     }
-    
+
     Alert.alert("Confirmar Exclusão", "Deseja realmente excluir esta área?", [
       { text: "Cancelar", style: "cancel" },
       {
@@ -55,7 +69,7 @@ export default function AreaDetails() {
           try {
             // CORREÇÃO: Passa o 'id' da área e o 'user.id' (owner_id)
             await deleteArea(String(id), user.id);
-            
+
             Alert.alert("Sucesso", "Área excluída");
             router.replace("/(tabs)/areas"); // Volta para a lista
           } catch (e: any) {
@@ -72,15 +86,15 @@ export default function AreaDetails() {
   return (
     <ScrollView contentContainerStyle={s.container}>
       <Text style={s.title}>{area.description}</Text>
-      
+
       <View style={s.infoBox}>
-        <Text style={s.infoLabel}>Área Total (ha)</Text>
-        <Text style={s.infoValue}>{area.total_area_hectare} ha</Text>
+        <Text style={s.infoLabel}>Área Total</Text>
+        <Text style={s.infoValue}>{area.total_area_hectare} hectares</Text>
       </View>
-      
+
       <View style={s.infoBox}>
         <Text style={s.infoLabel}>Tamanho do Lote</Text>
-        <Text style={s.infoValue}>{area.lot_size}</Text>
+        <Text style={s.infoValue}>{formatLotSize(area.lot_size)}</Text>
       </View>
 
       {area.registration_number && (
@@ -98,7 +112,7 @@ export default function AreaDetails() {
       )}
 
       {area.suggested_lot_price != null && (
-         <View style={s.infoBox}>
+        <View style={s.infoBox}>
           <Text style={s.infoLabel}>Valor Sugerido (Lote)</Text>
           <Text style={s.infoValue}>R$ {area.suggested_lot_price.toLocaleString('pt-BR')}</Text>
         </View>
@@ -132,9 +146,9 @@ const s = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   container: { padding: 16, gap: 10, paddingBottom: 40 },
   title: { fontSize: 22, fontWeight: "800", marginBottom: 10 },
-  infoBox: { 
-    backgroundColor: '#fff', padding: 12, borderRadius: 8, 
-    borderWidth: 1, borderColor: '#e5e7eb' 
+  infoBox: {
+    backgroundColor: '#fff', padding: 12, borderRadius: 8,
+    borderWidth: 1, borderColor: '#e5e7eb'
   },
   infoLabel: { fontSize: 13, color: '#6B7280' },
   infoValue: { fontSize: 16, fontWeight: '600', color: '#111827' },

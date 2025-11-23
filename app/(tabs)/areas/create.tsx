@@ -1,16 +1,19 @@
 import { useAuth } from "@/context/AuthContext";
 import { createArea } from "@/services/areas";
 import type { CreateAreaDTO } from "@/types/area";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  Modal,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { TextInputMask } from "react-native-masked-text";
@@ -25,7 +28,7 @@ function errMsg(e: any) {
   return e?.message ?? "Falha ao criar.";
 }
 
-// Helper: Componente de botão para o seletor (definido localmente)
+// Componente de botão para o seletor (definido localmente)
 const LotSizeButton: React.FC<{
   label: string;
   value: string;
@@ -49,6 +52,7 @@ export default function CreateAreaScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [isPickerVisible, setPickerVisible] = useState(false);
 
   // Estados do formulário (antes em AreaForm)
   const [description, setDescription] = useState("");
@@ -57,6 +61,14 @@ export default function CreateAreaScreen() {
   const [location, setLocation] = useState("");
   const [suggestedLotPrice, setSuggestedLotPrice] = useState("");
   const [lotSize, setLotSize] = useState(""); // "TENx20" | "TENx30"
+
+  const lotSizes = [
+    { label: "10x20", value: "TENx20" },
+    { label: "10x30", value: "TENx30" },
+  ];
+
+  const openPicker = () => setPickerVisible(true);
+  const closePicker = () => setPickerVisible(false);
 
   const onSubmit = async () => {
     setLoading(true);
@@ -132,25 +144,42 @@ export default function CreateAreaScreen() {
         />
 
         <Text style={[s.label, { marginTop: 15 }]}>Tamanho do lote *</Text>
-        <View style={[s.lotSelector, { marginBottom: 15 }]}> 
-          <LotSizeButton
-            label="10x20"
-            value="TENx20"
-            current={lotSize}
-            onPress={setLotSize}
-          />
-          <LotSizeButton
-            label="10x30"
-            value="TENx30"
-            current={lotSize}
-            onPress={setLotSize}
-          />
-          {!!lotSize && (
-            <TouchableOpacity onPress={() => setLotSize("")} style={{ padding: 8 }}>
-              <Text style={{ color: '#9CA3AF' }}>Limpar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <TouchableOpacity onPress={openPicker} style={[s.input, { justifyContent: "space-between", flexDirection: "row", alignItems: "center" }]}>
+          <Text style={{ color: lotSize ? "#000" : "#9CA3AF" }}>
+            {lotSize ? lotSizes.find((item) => item.value === lotSize)?.label : "Selecione o tamanho do lote"}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
+        {!!lotSize && (
+          <TouchableOpacity onPress={() => setLotSize("")} style={{ padding: 8 }}>
+            <Text style={{ color: "#9CA3AF" }}>Limpar</Text>
+          </TouchableOpacity>
+        )}
+
+        <Modal visible={isPickerVisible} animationType="slide" transparent={true}>
+          <View style={s.modalOverlay}>
+            <View style={s.modalContent}>
+              <FlatList
+                data={lotSizes}
+                keyExtractor={(item) => item.value}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={s.modalItem}
+                    onPress={() => {
+                      setLotSize(item.value);
+                      closePicker();
+                    }}
+                  >
+                    <Text style={s.modalItemText}>{item.label}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+              <TouchableOpacity onPress={closePicker} style={s.modalCloseButton}>
+                <Text style={s.modalCloseButtonText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <Text style={[s.label, { marginTop: 15 }]}>Matrícula (opcional)</Text>
         <TextInput
@@ -250,5 +279,37 @@ const s = StyleSheet.create({
   },
   buttonText: { 
     color: "#fff", fontWeight: "700", textAlign: "center", fontSize: 16 
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 16,
+  },
+  modalItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+  },
+  modalItemText: {
+    fontSize: 16,
+    color: "#374151",
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "#3B82F6",
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  modalCloseButtonText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });
