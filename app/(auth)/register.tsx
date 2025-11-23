@@ -1,23 +1,22 @@
-import React from "react";
-import { KeyboardAvoidingView, ScrollView, View, Text, Platform } from "react-native";
-import { Link, Redirect, router } from "expo-router";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Toast from "react-native-toast-message";
 import * as Haptics from "expo-haptics";
+import { Link, Redirect, router } from "expo-router";
+import React from "react";
+import { useForm } from "react-hook-form";
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import Toast from "react-native-toast-message";
+import { z } from "zod";
 
 import { useAuth } from "../../context/AuthContext";
 import { createUser, loginPassword, safeGetMe } from "../../services/auth";
-import { extractErrorMessage } from "../../services/normalize";
 import { decodeJwt } from "../../services/jwt";
-import { onlyDigits, isValidCPF, isValidPhoneBR } from "../../utils/validators";
+import { extractErrorMessage } from "../../services/normalize";
+import { isValidCPF, isValidPhoneBR, onlyDigits } from "../../utils/validators";
 
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import FormTextInput from "../../components/FormTextInput";
 import PrimaryButton from "../../components/PrimaryButton";
-import { Controller } from "react-hook-form";
-import { MaskedTextInput } from "react-native-mask-text";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { Eye, EyeOff } from "lucide-react-native";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -98,6 +97,30 @@ const schema = z
   });
 
 type FormData = z.infer<typeof schema>;
+
+const PasswordTextInput: React.FC<{ control: any; name: string; placeholder: string }> = ({ control, name, placeholder }) => {
+  const [showPassword, setShowPassword] = React.useState(false);
+
+  return (
+    <View style={{ position: 'relative', justifyContent: 'center' }}>
+      <FormTextInput
+        name={name}
+        control={control}
+        placeholder={placeholder}
+        secureTextEntry={!showPassword}
+        autoCapitalize="none"
+      />
+
+      <TouchableOpacity
+        onPress={() => setShowPassword((s: boolean) => !s)}
+        activeOpacity={0.7}
+        style={{ position: 'absolute', right: 12, top: 5, height: 40, justifyContent: 'center' }}
+      >
+        {showPassword ? <Eye size={20} color="#6B7280" /> : <EyeOff size={20} color="#6B7280" />}
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 export default function SignUp() {
   const { user, setSession, clearSession } = useAuth();
@@ -220,59 +243,22 @@ export default function SignUp() {
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <Controller
-          control={control}
+        <FormTextInput
           name="cpf"
-          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
-            <View style={{ marginBottom: 12 }}>
-              <MaskedTextInput
-                type="custom"
-                options={{ mask: "999.999.999-99" }}
-                value={value ?? ""}
-                onChangeText={(masked, unmasked) => onChange(unmasked)} // salva só dígitos
-                onBlur={onBlur}
-                keyboardType="number-pad"
-                placeholder="CPF"
-                style={{
-                  borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
-                  paddingVertical: 10, paddingHorizontal: 12, backgroundColor: "#FFF", fontSize: 16,
-                }}
-              />
-              {!!error && <Text style={{ color: "#EF4444", marginTop: 6 }}>{error.message}</Text>}
-            </View>
-          )}
-        />
-
-        {/* Telefone (mascarado) */}
-        <Controller
           control={control}
-          name="phone"
-          render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => {
-            const v = (value ?? "") as string;
-            const isCell = v.length >= 11;
-            const mask = isCell ? "(99) 99999-9999" : "(99) 9999-9999";
-            return (
-              <View style={{ marginBottom: 12 }}>
-                <MaskedTextInput
-                  type="custom"
-                  options={{ mask }}
-                  value={v}
-                  onChangeText={(masked, unmasked) => onChange(unmasked)} // salva só dígitos
-                  onBlur={onBlur}
-                  keyboardType="phone-pad"
-                  placeholder="Telefone com DDD"
-                  style={{
-                    borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10,
-                    paddingVertical: 10, paddingHorizontal: 12, backgroundColor: "#FFF", fontSize: 16,
-                  }}
-                />
-                {!!error && <Text style={{ color: "#EF4444", marginTop: 6 }}>{error.message}</Text>}
-              </View>
-            );
-          }}
+          placeholder="CPF"
+          maskType="cpf"
+          keyboardType="number-pad"
         />
-        <FormTextInput name="password" control={control} placeholder="Senha" secureTextEntry />
-        <FormTextInput name="confirmPassword" control={control} placeholder="Confirmar senha" secureTextEntry />
+        <FormTextInput
+          name="phone"
+          control={control}
+          placeholder="Telefone com DDD"
+          maskType="phone"
+          keyboardType="phone-pad"
+        />
+        <PasswordTextInput control={control} name="password" placeholder="Senha" />
+        <PasswordTextInput control={control} name="confirmPassword" placeholder="Confirmar senha" />
 
         <PrimaryButton title="Cadastrar" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
 

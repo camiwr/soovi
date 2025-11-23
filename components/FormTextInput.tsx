@@ -1,6 +1,7 @@
 import React from "react";
 import { Controller } from "react-hook-form";
-import { TextInput, View, Text, TextInputProps } from "react-native";
+import { Text, TextInput, TextInputProps, View } from "react-native";
+import { TextInputMask, TextInputMaskProps } from "react-native-masked-text";
 
 type Props = {
   name: string;
@@ -8,12 +9,17 @@ type Props = {
   label?: string;
 } & Omit<TextInputProps, "onChange" | "value">;
 
+type MaskedProps = {
+  maskType?: "cpf" | "phone" | "currency";
+} & Props;
+
 export default function FormTextInput({
   name,
   control,
   label,
+  maskType,
   ...inputProps
-}: Props) {
+}: MaskedProps) {
   return (
     <Controller
       control={control}
@@ -29,22 +35,60 @@ export default function FormTextInput({
             </Text>
           ) : null}
 
-          <TextInput
-            onBlur={onBlur}
-            onChangeText={onChange}
-            value={value}
-            style={{
-              borderWidth: 1,
-              borderColor: error ? "#DC2626" : "#D1D5DB",
-              paddingVertical: 12,
-              paddingHorizontal: 14,
-              borderRadius: 10,
-              backgroundColor: "white",
-              fontSize: 16,
-            }}
-            placeholderTextColor="#9CA3AF"
-            {...inputProps}
-          />
+          {maskType ? (
+            (() => {
+              const { type: _type, ...maskInputProps } = inputProps as TextInputMaskProps;
+              return (
+                <TextInputMask
+                  type={
+                    maskType === "cpf"
+                      ? "cpf"
+                      : maskType === "phone"
+                      ? "cel-phone"
+                      : "money"
+                  }
+                  options={
+                    maskType === "phone"
+                      ? { maskType: "BRL", withDDD: true, dddMask: "(99) " }
+                      : maskType === "currency"
+                      ? { precision: 2, separator: ",", delimiter: ".", unit: "R$ ", suffixUnit: "" }
+                      : undefined
+                  }
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: error ? "#DC2626" : "#D1D5DB",
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 10,
+                    backgroundColor: "white",
+                    fontSize: 16,
+                  }}
+                  placeholderTextColor="#9CA3AF"
+                  {...maskInputProps}
+                />
+              );
+            })()
+          ) : (
+            <TextInput
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              style={{
+                borderWidth: 1,
+                borderColor: error ? "#DC2626" : "#D1D5DB",
+                paddingVertical: 12,
+                paddingHorizontal: 14,
+                borderRadius: 10,
+                backgroundColor: "white",
+                fontSize: 16,
+              }}
+              placeholderTextColor="#9CA3AF"
+              {...inputProps}
+            />
+          )}
 
           {!!error && (
             <Text

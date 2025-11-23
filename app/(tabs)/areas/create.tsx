@@ -1,20 +1,20 @@
+import { useAuth } from "@/context/AuthContext";
+import { createArea } from "@/services/areas";
+import type { CreateAreaDTO } from "@/types/area";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Text,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
   ActivityIndicator,
-  View,
+  Alert,
+  StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { useRouter } from "expo-router";
-import { createArea } from "@/services/areas";
-import { useAuth } from "@/context/AuthContext";
-import type { CreateAreaDTO } from "@/types/area";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { TextInputMask } from "react-native-masked-text";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Helper para tratar mensagens de erro
 function errMsg(e: any) {
@@ -105,13 +105,11 @@ export default function CreateAreaScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={s.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+      <KeyboardAwareScrollView
         contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled"
+        extraScrollHeight={20} // Ajusta a rolagem para evitar sobreposição
       >
         {/* Campos do Formulário */}
         <Text style={s.label}>Descrição *</Text>
@@ -169,13 +167,21 @@ export default function CreateAreaScreen() {
           onChangeText={setLocation}
         />
         
-        <Text style={s.label}>Valor sugerido p/ lote (R$)</Text>
-        <TextInput
-          style={s.input}
-          placeholder="ex.: 15000"
+        <Text style={s.label}>Valor sugerido para o lote (R$)</Text>
+        <TextInputMask
+          type="money"
+          options={{
+            precision: 2,
+            separator: ",",
+            delimiter: ".",
+            unit: "R$ ",
+            suffixUnit: "",
+          }}
           value={suggestedLotPrice}
           onChangeText={setSuggestedLotPrice}
-          keyboardType="decimal-pad"
+          keyboardType="numeric"
+          placeholder="Preço sugerido do lote"
+          style={s.input}
         />
         
         {/* Botão de Salvar */}
@@ -190,12 +196,11 @@ export default function CreateAreaScreen() {
             <Text style={s.buttonText}>Salvar Área</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </SafeAreaProvider>
   );
 }
 
-// Estilos
 const s = StyleSheet.create({
   container: { flex: 1 },
   scroll: { padding: 16, gap: 12, paddingBottom: 60 },
