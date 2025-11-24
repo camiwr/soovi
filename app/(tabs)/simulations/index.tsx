@@ -26,7 +26,6 @@ export default function SimulationsIndex() {
         user?.id ? listAreasByOwner(user.id, { timestamp: Date.now() }) : Promise.resolve<Area[]>([])
       ]);
       setAreas(a);
-      // filtra pelo conjunto das suas áreas
       const meusAreaIds = new Set(a.map(x=>x.id));
       setSims(s.filter(sim => meusAreaIds.has(sim.area_id)));
     } catch(e:any) {
