@@ -148,79 +148,101 @@ export default function SignUp() {
 
     try {
       const payload = {
-        name: data.name.trim(),
-        email: expectedEmail,
-        cpf: data.cpf ? onlyDigits(data.cpf) : undefined,
-        phone: data.phone ? onlyDigits(data.phone) : undefined,
-        password: data.password ? data.password : undefined, // opcional
+      name: data.name.trim(),
+      email: expectedEmail,
+      cpf: data.cpf ? onlyDigits(data.cpf) : undefined,
+      phone: data.phone ? onlyDigits(data.phone) : undefined,
+      password: data.password ? data.password : undefined, // opcional
       };
       await createUser(payload);
 
       if (!data.password) {
-        Toast.show({ type: "success", text1: "Conta criada!", text2: "Entre com seu e-mail na próxima tela." });
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.replace("/(auth)/login");
-        return;
+      Toast.show({ type: "success", text1: "Conta criada!", text2: "Entre com seu e-mail na próxima tela." });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/(auth)/login");
+      return;
       }
 
       const auth = await loginPassword({ email: expectedEmail, password: data.password });
 
       const accessToken =
-        auth?.accessToken ?? auth?.access_token ?? auth?.data?.accessToken ?? null;
+      auth?.accessToken ?? auth?.access_token ?? auth?.data?.accessToken ?? null;
       const refreshToken =
-        auth?.refreshToken ?? auth?.refresh_token ?? auth?.data?.refreshToken ?? null;
+      auth?.refreshToken ?? auth?.refresh_token ?? auth?.data?.refreshToken ?? null;
 
       if (!accessToken) throw new Error("Token ausente após login.");
 
       try {
-        const me = await waitForConsistentMeStrict({
+      const me = await waitForConsistentMeStrict({
+        accessToken,
+        expectedEmail,
+        maxDurationMs: 15000,
+        baseDelayMs: 220,
+        factor: 1.9,
+        warmupMs: 300,
+      });
+
+      await setSession({ user: me, accessToken, refreshToken });
+      Toast.show({ type: "success", text1: "Conta criada!" });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/(tabs)");
+      return;
+      } catch {
+      const claims = decodeJwt(accessToken);
+      const tokenEmail = String(claims?.email ?? claims?.sub ?? "").toLowerCase();
+
+      if (tokenEmail && tokenEmail === expectedEmail) {
+        await setSession({ user: null, accessToken, refreshToken });
+
+        (async () => {
+        try {
+          const meLater = await waitForConsistentMeStrict({
           accessToken,
           expectedEmail,
-          maxDurationMs: 15000,
-          baseDelayMs: 220,
-          factor: 1.9,
-          warmupMs: 300,
-        });
+          maxDurationMs: 20000,
+          baseDelayMs: 300,
+          factor: 1.8,
+          warmupMs: 0,
+          });
+          await setSession({ user: meLater, accessToken, refreshToken });
+        } catch { }
+        })();
 
-        await setSession({ user: me, accessToken, refreshToken });
         Toast.show({ type: "success", text1: "Conta criada!" });
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         router.replace("/(tabs)");
         return;
-      } catch {
-        const claims = decodeJwt(accessToken);
-        const tokenEmail = String(claims?.email ?? claims?.sub ?? "").toLowerCase();
+      }
 
-        if (tokenEmail && tokenEmail === expectedEmail) {
-          await setSession({ user: null, accessToken, refreshToken });
-
-          (async () => {
-            try {
-              const meLater = await waitForConsistentMeStrict({
-                accessToken,
-                expectedEmail,
-                maxDurationMs: 20000,
-                baseDelayMs: 300,
-                factor: 1.8,
-                warmupMs: 0,
-              });
-              await setSession({ user: meLater, accessToken, refreshToken });
-            } catch { }
-          })();
-
-          Toast.show({ type: "success", text1: "Conta criada!" });
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          router.replace("/(tabs)");
-          return;
-        }
-
-        await clearSession();
-        Toast.show({ type: "error", text1: "Cadastro inconsistente", text2: "As credenciais não correspondem." });
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await clearSession();
+      Toast.show({ type: "error", text1: "Cadastro inconsistente", text2: "As credenciais não correspondem." });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch (e: any) {
+      const errMsg = extractErrorMessage(e);
+
+      // Detecta CPF já cadastrado e mostra alerta específico
+      if (errMsg && /cpf/i.test(errMsg) && /(já|ja|already|exist|exists|duplic)/i.test(errMsg)) {
+      // exibe toast/alert específico para CPF duplicado
+      Toast.show({
+        type: "error",
+        text1: "CPF já cadastrado",
+        text2: "Este CPF já está em uso por outro usuário.",
+      });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+      }
+
       await clearSession();
-      Toast.show({ type: "error", text1: "Falha no cadastro", text2: extractErrorMessage(e) });
+      Toast.show({
+        type: "error",
+        text1: "Não foi possível criar sua conta",
+        text2: errMsg
+          ? errMsg.length > 120
+            ? errMsg.slice(0, 120) + "..."
+            : errMsg
+          : "Verifique os dados informados e tente novamente.",
+      });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };

@@ -71,9 +71,9 @@ export default function AreaDetails() {
             await deleteArea(String(id), user.id);
 
             Alert.alert("Sucesso", "Área excluída");
-            router.replace("/(tabs)/areas"); // Volta para a lista
+            router.replace("/(tabs)/areas"); 
           } catch (e: any) {
-            Alert.alert("Erro ao Excluir", errMsg(e));
+            Alert.alert("Erro ao Excluir");
           }
         }
       }

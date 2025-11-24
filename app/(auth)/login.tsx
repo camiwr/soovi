@@ -174,7 +174,7 @@ export default function SignIn() {
       Toast.show({
         type: "error",
         text1: "Não foi possível entrar",
-        text2: extractErrorMessage(e) || "Tente novamente em instantes.",
+        text2: "Email ou senha inválidos.",
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
