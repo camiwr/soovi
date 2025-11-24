@@ -1,10 +1,14 @@
-import React, { createContext, useContext, useRef, useState, useCallback } from 'react';
-import { Animated, Easing, StyleSheet, Text, View, Platform } from 'react-native';
+import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
+import { MessageService } from "../../services/messageService";
 
 type ToastType = 'success' | 'error' | 'info';
 type ToastState = { visible: boolean; title?: string; message?: string; type: ToastType };
 
-const ToastCtx = createContext<{ show: (title: string, message?: string, type?: ToastType) => void }>({ show: () => {} });
+const ToastCtx = createContext({
+  show: (title: string, message?: string, type?: ToastType) => {},
+  showFormattedMessage: (apiMessage: string) => {},
+});
 
 export function useToast() { return useContext(ToastCtx); }
 
@@ -12,7 +16,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [state, setState] = useState<ToastState>({ visible: false, type: 'info' });
   const slide = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const timer = useRef<number | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hide = useCallback(() => {
     Animated.parallel([
@@ -31,12 +35,20 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     timer.current = setTimeout(hide, 2800);
   }, [hide, slide, opacity]);
 
+  const showFormattedMessage = useCallback((apiMessage: string) => {
+    const formattedMessage = MessageService.formatMessage(apiMessage);
+    const mappedType: ToastType =
+      formattedMessage.type === 'success' ? 'success' :
+      formattedMessage.type === 'error' ? 'error' : 'info';
+    show(formattedMessage.title || "", formattedMessage.content, mappedType);
+  }, [show]);
+
   const bg =
     state.type === 'success' ? '#10B981' :
     state.type === 'error'   ? '#EF4444' : '#2563EB';
 
   return (
-    <ToastCtx.Provider value={{ show }}>
+    <ToastCtx.Provider value={{ show, showFormattedMessage }}>
       {children}
       {state.visible && (
         <Animated.View

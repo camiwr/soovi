@@ -78,15 +78,35 @@ export default function CreateAreaScreen() {
         setLoading(false);
         return;
       }
-      
+
+      // Validação dos campos obrigatórios
+      if (!description.trim() || !totalArea.trim() || !lotSize || !suggestedLotPrice.trim()) {
+        Alert.alert(
+          "Atenção",
+          "Preencha todos os campos obrigatórios: Descrição, Área total, Tamanho do lote e Valor sugerido para o lote."
+        );
+        setLoading(false);
+        return;
+      }
+
       // Criar o payload a partir dos estados
+      const parseCurrency = (val: string | undefined): number | undefined => {
+        if (!val) return undefined;
+        // Remove tudo que não seja dígito, vírgula ou ponto (remove "R$ " e espaços)
+        const cleaned = val.replace(/[^\d,.-]/g, '');
+        // Remove pontos usados como separador de milhares e converte vírgula decimal para ponto
+        const normalized = cleaned.replace(/\./g, '').replace(',', '.');
+        const num = Number(normalized);
+        return Number.isFinite(num) ? num : undefined;
+      };
+
       const payload: CreateAreaDTO = {
         description: description.trim(),
         total_area_hectare: Number(totalArea) || 0,
         lot_size: lotSize,
         registration_number: registration.trim() || undefined,
         location: location.trim() || undefined,
-        suggested_lot_price: suggestedLotPrice ? Number(suggestedLotPrice) : undefined,
+        suggested_lot_price: parseCurrency(suggestedLotPrice),
       };
 
       // Validação do frontend
@@ -102,13 +122,13 @@ export default function CreateAreaScreen() {
         setLoading(false);
         return;
       }
-      
+
       // Enviando o payload E o 'owner_id'
       const created = await createArea(payload, user.id);
-      
+
       Alert.alert("Sucesso", "Área criada com sucesso!");
       router.replace({ pathname: "/(tabs)/areas/[id]", params: { id: created.id } });
-    
+
     } catch (e: any) {
       Alert.alert("Erro ao Criar", errMsg(e));
     } finally {
