@@ -69,7 +69,6 @@ async function waitForConsistentMeStrict({
   throw new Error("Timeout esperando consistência do /users/me.");
 }
 
-// CORREÇÃO (HOOKS): Componente movido para fora da renderização principal
 const PasswordTextInput: React.FC<{ control: any }> = ({ control }) => {
   const [showPassword, setShowPassword] = React.useState(false);
 

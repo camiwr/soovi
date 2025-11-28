@@ -30,7 +30,7 @@ export default function ProfileScreen() {
       // TODO: conectar com PATCH /users/me
       Toast.show({ type: "success", text1: "Dados atualizados!" });
     } catch (e: any) {
-      Toast.show({ type: "error", text1: "Não foi possível salvar", text2: e?.message ?? "Tente novamente" });
+      Toast.show({ type: "error", text1: "Não foi possível salvar", text2: "Tente novamente" });
     } finally {
       setSaving(false);
     }

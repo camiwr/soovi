@@ -8,7 +8,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
-const money = (n:number)=> `R$ ${Number(n||0).toLocaleString("pt-BR")}`;
+const money = (n:number)=> `R$ ${Number(n||0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const Table = ({ data }: { data: { label: string; value: string }[] }) => {
   const colorScheme = useColorScheme();
@@ -21,8 +21,8 @@ const Table = ({ data }: { data: { label: string; value: string }[] }) => {
           <View style={{ flex: 2, padding: 12, borderRightWidth: 1, borderRightColor: colors.tint }}>
             <Text style={{ fontWeight: '600', color: colors.text }}>{row.label}</Text>
           </View>
-          <View style={{ flex: 1, padding: 12 }}>
-            <Text style={{ color: colors.text }}>{row.value}</Text>
+          <View style={{ flex: 1, padding: 12, justifyContent: 'center', alignItems: 'flex-end' }}>
+            <Text style={{ color: colors.text, textAlign: 'right' }}>{row.value}</Text>
           </View>
         </View>
       ))}
@@ -78,7 +78,6 @@ export default function SimulationDetails(){
     { label: 'Comissão', value: money(sim.commission_cost) },
     { label: 'Descontos Totais', value: money(sim.total_discounts) },
     { label: 'Receita Líquida', value: money(sim.net_revenue) },
-    { label: 'Saldo do Projeto', value: money(sim.project_balance) },
     { label: 'Recebível Anual', value: money(sim.annual_receivable) },
   ];
 
@@ -110,7 +109,7 @@ export default function SimulationDetails(){
               {sim.used_parameters.infra.map((i, idx) => (
                 <View key={idx} style={{ flexDirection: 'row', padding: 12, backgroundColor: idx % 2 === 0 ? colors.background : '#f9f9f9', borderBottomWidth: idx < sim.used_parameters!.infra.length - 1 ? 1 : 0, borderBottomColor: colors.tint }}>
                   <Text style={{ flex: 1, fontWeight: '600', color: colors.text }}>{i.type}</Text>
-                  <Text style={{ flex: 1, color: colors.text }}>R$ {i.unit_value.toLocaleString("pt-BR")} × {i.installments} parcelas</Text>
+                  <Text style={{ flex: 1, color: colors.text }}>R$ {i.unit_value.toLocaleString("pt-BR")} | {i.installments} parcelas</Text>
                 </View>
               ))}
             </View>

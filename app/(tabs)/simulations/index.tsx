@@ -5,10 +5,13 @@ import type { Area } from "@/types/area";
 import type { Simulation } from "@/types/simulation";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, Text, TouchableOpacity, View } from "react-native";
+import Toast from "react-native-toast-message";
 
 const msg = (e:any)=> e?.response?.data?.message ?? e?.message ?? "Falha na requisição.";
-const money = (n:number)=> `R$ ${Number(n||0).toLocaleString("pt-BR")}`;
+const showToast = (type: "success" | "error", text1: string, text2?: string) => {
+  Toast.show({ type, text1, text2 });
+};
 
 export default function SimulationsIndex() {
   const router = useRouter();
@@ -29,7 +32,7 @@ export default function SimulationsIndex() {
       const meusAreaIds = new Set(a.map(x=>x.id));
       setSims(s.filter(sim => meusAreaIds.has(sim.area_id)));
     } catch(e:any) {
-      Alert.alert("Erro", msg(e));
+      showToast("error", "Erro", msg(e));
     } finally { setLoading(false); }
   }, [user?.id]);
 
@@ -41,16 +44,27 @@ export default function SimulationsIndex() {
   }, [areas]);
 
   const handleDelete = (s: Simulation) => {
-    Alert.alert("Confirmar", `Excluir a simulação “${areaNome(s.area_id)}”?`, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Excluir", style: "destructive", onPress: async ()=>{
-        try { await deleteSimulation(s.id); setSims(prev => prev.filter(i => i.id !== s.id)); }
-        catch(e:any){ Alert.alert("Erro", msg(e)); }
-      } }
-    ]);
+    Toast.show({
+      type: "info",
+      text1: "Confirmar",
+      text2: `Excluir a simulação “${areaNome(s.area_id)}”?`,
+      onPress: async () => {
+        try {
+          await deleteSimulation(s.id);
+          setSims(prev => prev.filter(i => i.id !== s.id));
+          showToast("success", "Sucesso", "Simulação excluída com sucesso.");
+        } catch(e:any) {
+          showToast("error", "Erro", "Simulação não encontrada.");
+        }
+      }
+    });
   };
 
   if (loading) return <View style={{flex:1,justifyContent:"center",alignItems:"center"}}><ActivityIndicator/></View>;
+
+  function money(gross_estimated_value: number): React.ReactNode {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <View style={{ flex:1 }}>
@@ -67,7 +81,7 @@ export default function SimulationsIndex() {
         <Text style={{ color:"#fff", fontWeight:"700", textAlign:"center" }}>+ Nova Simulação</Text>
       </TouchableOpacity>
 
-      <Text style={{ fontSize:18, fontWeight:"800" }}>Minhas simulações</Text>
+      <Text style={{ fontSize:18, fontWeight:"800" }}>Minhas simulações.</Text>
 
       {sims.length === 0 ? (
         <Text>Você ainda não tem simulações.</Text>

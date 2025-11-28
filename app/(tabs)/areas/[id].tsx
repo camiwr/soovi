@@ -3,7 +3,8 @@ import { deleteArea, getArea } from "@/services/areas";
 import type { Area } from "@/types/area";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Toast from "react-native-toast-message";
 
 // Função helper para tratar mensagens de erro
 function errMsg(e: any) {
@@ -28,6 +29,11 @@ function formatLotSize(lotSize: string): string {
   return `${area} m²`;
 }
 
+// Função utilitária para exibir toasts
+function showToast(type: "success" | "error" | "info", text1: string, text2?: string) {
+  Toast.show({ type, text1, text2 });
+}
+
 export default function AreaDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -44,7 +50,7 @@ export default function AreaDetails() {
         const data = await getArea(String(id));
         setArea(data);
       } catch (e: any) {
-        Alert.alert("Erro", errMsg(e));
+        showToast("error", "Erro", errMsg(e));
       } finally {
         setLoading(false);
       }
@@ -58,26 +64,26 @@ export default function AreaDetails() {
   const handleDelete = () => {
     // Validação extra
     if (!isOwner || !id || !user?.id) {
-      Alert.alert("Atenção", "Você não tem permissão para esta ação ou não está logado.");
+      showToast("info", "Atenção", "Você não tem permissão para esta ação ou não está logado.");
       return;
     }
 
-    Alert.alert("Confirmar Exclusão", "Deseja realmente excluir esta área?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir", style: "destructive", onPress: async () => {
-          try {
-            // CORREÇÃO: Passa o 'id' da área e o 'user.id' (owner_id)
-            await deleteArea(String(id), user.id);
+    Toast.show({
+      type: "info",
+      text1: "Confirmar Exclusão",
+      text2: "Deseja realmente excluir esta área?",
+      onPress: async () => {
+        try {
+          // CORREÇÃO: Passa o 'id' da área e o 'user.id' (owner_id)
+          await deleteArea(String(id), user.id);
 
-            Alert.alert("Sucesso", "Área excluída");
-            router.replace("/(tabs)/areas"); 
-          } catch (e: any) {
-            Alert.alert("Erro ao Excluir");
-          }
+          showToast("success", "Sucesso", "Área excluída com sucesso.");
+          router.replace("/(tabs)/areas"); 
+        } catch (e: any) {
+          showToast("error", "Erro ao Excluir");
         }
       }
-    ]);
+    });
   };
 
   if (loading) return <View style={s.center}><ActivityIndicator /></View>;
