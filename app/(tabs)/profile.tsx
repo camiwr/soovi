@@ -102,12 +102,10 @@ export default function ProfileScreen() {
         </View>
 
         <TouchableOpacity onPress={handleSave} disabled={saving} style={[s.primaryButton, saving && s.buttonDisabled]}>
-          <Text style={s.buttonIcon}>💾</Text>
           <Text style={s.primaryButtonText}>{saving ? "Salvando..." : "Salvar Alterações"}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleSignOut} style={s.secondaryButton}>
-          <Text style={s.buttonIcon}>🚪</Text>
           <Text style={s.secondaryButtonText}>Sair da Conta</Text>
         </TouchableOpacity>
       </View>

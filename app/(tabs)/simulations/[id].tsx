@@ -1,136 +1,273 @@
-import { useColorScheme } from "@/components/useColorScheme";
-import Colors from "@/constants/Colors";
-import { getArea } from "@/services/areas";
-import { deleteSimulation, listSimulations } from "@/services/simulations";
-import type { Area } from "@/types/area";
-import type { Simulation } from "@/types/simulation";
-import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
-const money = (n:number)=> `R$ ${Number(n||0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { getSimulation, deleteSimulation } from "@/services/simulations";
+import { getArea } from "@/services/areas";
+import type {
+  Simulation,
+  ReceivablesScheduleApiItem,
+} from "@/types/simulation";
+import { formatCurrencyBRL } from "@/utils/formatCurrency";
 
-const Table = ({ data }: { data: { label: string; value: string }[] }) => {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
 
-  return (
-    <View style={{ borderWidth: 1, borderColor: colors.tint, borderRadius: 8, overflow: 'hidden' }}>
-      {data.map((row, index) => (
-        <View key={index} style={{ flexDirection: 'row', backgroundColor: index % 2 === 0 ? colors.background : '#f9f9f9' }}>
-          <View style={{ flex: 2, padding: 12, borderRightWidth: 1, borderRightColor: colors.tint }}>
-            <Text style={{ fontWeight: '600', color: colors.text }}>{row.label}</Text>
-          </View>
-          <View style={{ flex: 1, padding: 12, justifyContent: 'center', alignItems: 'flex-end' }}>
-            <Text style={{ color: colors.text, textAlign: 'right' }}>{row.value}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
+type NormalizedScheduleItem = {
+  year: string;
+  value: number;
 };
 
-export default function SimulationDetails(){
-  const { id, data } = useLocalSearchParams<{ id:string; data?:string }>();
+function normalizeSchedule(
+  schedule: ReceivablesScheduleApiItem[] | undefined
+): NormalizedScheduleItem[] {
+  if (!schedule) return [];
+  return schedule.map((item) => {
+    const [year, rawValue] = Object.entries(item)[0] ?? ["-", 0];
+    const num =
+      typeof rawValue === "number"
+        ? rawValue
+        : rawValue != null
+          ? Number(rawValue)
+          : 0;
+    return { year, value: Number.isNaN(num) ? 0 : num };
+  });
+}
+
+export default function SimulationDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const [sim, setSim] = useState<Simulation | null>(null);
-  const [area, setArea] = useState<Area | null>(null);
+
+  const [simulation, setSimulation] = useState<Simulation | null>(null);
+  const [areaName, setAreaName] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<NormalizedScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(()=>{(async()=>{
-    try{
-      let s: Simulation | null = null;
-      if (data) {
-        try { s = JSON.parse(decodeURIComponent(String(data))); } catch {}
+  useEffect(() => {
+    if (!id) return;
+
+    (async () => {
+      try {
+        const data = await getSimulation(id);
+        setSimulation(data);
+        setSchedule(normalizeSchedule(data.receivables_schedule));
+
+        // área: tenta usar o nome vindo direto, se não tiver, busca no endpoint de área
+        if (data.area?.name) {
+          setAreaName(data.area.name);
+        } else {
+          try {
+            const area = await getArea(data.area_id);
+            if (area?.description) setAreaName(area.description);
+          } catch (e) {
+            console.log("Não foi possível carregar nome da área", e);
+          }
+        }
+      } catch (error) {
+        console.log("Erro ao carregar simulação", error);
+        Alert.alert("Erro", "Não foi possível carregar a simulação.");
+      } finally {
+        setLoading(false);
       }
-      if (!s) {
-        const all = await listSimulations();
-        s = all.find(x => x.id === String(id)) ?? null;
-      }
-      if (!s) throw new Error("Simulação não encontrada.");
-      setSim(s);
-      setArea(await getArea(s.area_id));
-    }catch(e:any){
-      Alert.alert("Erro", e?.response?.data?.message ?? e?.message ?? "Falha ao carregar.");
-    }finally{ setLoading(false); }
-  })();}, [id, data]);
+    })();
+  }, [id]);
 
   const handleDelete = () => {
-    if(!id) return;
-    Alert.alert("Confirmar", "Excluir esta simulação?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Excluir", style: "destructive", onPress: async ()=>{
-        try { await deleteSimulation(String(id)); router.replace("/simulations"); }
-        catch(e:any){ Alert.alert("Erro", e?.response?.data?.message ?? e?.message ?? "Falha ao excluir."); }
-      } }
-    ]);
+    Alert.alert(
+      "Excluir simulação",
+      "Tem certeza que deseja excluir esta simulação?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (!id) return;
+              await deleteSimulation(id);
+              router.replace("/simulations");
+            } catch (error) {
+              console.log("Erro ao excluir simulação", error);
+              Alert.alert("Erro", "Não foi possível excluir.");
+            }
+          },
+        },
+      ]
+    );
   };
 
-  if(loading) return <View style={{flex:1,justifyContent:"center",alignItems:"center", backgroundColor: colors.background}}><ActivityIndicator color={colors.tint}/></View>;
-  if(!sim) return <View style={{ padding:16, backgroundColor: colors.background }}><Text style={{ color: colors.text }}>Simulação não encontrada.</Text></View>;
+  if (loading || !simulation) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator />
+        <Text>Carregando detalhes...</Text>
+      </View>
+    );
+  }
 
-  const resultsData = [
-    { label: 'VGV Bruto', value: money(sim.gross_estimated_value) },
-    { label: 'Custo de Infra', value: money(sim.infra_cost) },
-    { label: 'Impostos', value: money(sim.tax_cost) },
-    { label: 'Comissão', value: money(sim.commission_cost) },
-    { label: 'Descontos Totais', value: money(sim.total_discounts) },
-    { label: 'Receita Líquida', value: money(sim.net_revenue) },
-    { label: 'Recebível Anual', value: money(sim.annual_receivable) },
-  ];
+  const areaLabel =
+    areaName ??
+    simulation.area_id;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <Text style={{ fontSize: 24, color: '#000' }}>←</Text>
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 16, color: '#000' }}>Detalhes da Simulação</Text>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Simulação</Text>
+      <Text style={styles.subtitle}>
+        Área: {areaLabel} •{" "}
+        {new Date(simulation.simulated_at).toLocaleDateString()}
+      </Text>
+
+      {/* Resumo financeiro */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Resumo financeiro</Text>
+        <Row label="Valor bruto estimado" value={simulation.gross_estimated_value} />
+        <Row label="Infraestrutura" value={simulation.infra_cost} />
+        <Row label="Impostos" value={simulation.tax_cost} />
+        <Row label="Comissões" value={simulation.commission_cost} />
+        <Row label="Total de descontos" value={simulation.total_discounts} />
+        <Row label="Receita líquida" value={simulation.net_revenue} bold />
       </View>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingVertical: 16 }}>
-        <View style={{ marginBottom: 20, padding: 16, backgroundColor: '#f0f8ff', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
-          <Text style={{ fontSize: 24, fontWeight: "800", color: colors.text, marginBottom: 8 }}>Simulação</Text>
-          <Text style={{ fontSize: 16, color: colors.text }}>Área: {area ? area.description : sim.area_id}</Text>
-          <Text style={{ fontSize: 16, color: colors.text }}>Simulada em: {new Date(sim.simulated_at).toLocaleString()}</Text>
-          <Text style={{ fontSize: 16, color: colors.text }}>Recebimento: {sim.receiving_years} {sim.receiving_years > 1 ? "anos" : "ano"}</Text>
-        </View>
 
-        <View style={{ marginBottom: 20, padding: 16, backgroundColor: '#fff', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
-          <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginBottom: 12 }}>Resultados</Text>
-          <Table data={resultsData} />
-        </View>
+      {/* Parâmetros – sem mostrar os UUIDs */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Parâmetros utilizados</Text>
+        <Text style={styles.helperText}>
+          Impostos, comissão e lucro do parceiro foram aplicados conforme os
+          parâmetros cadastrados para esta área.
+        </Text>
 
-        {sim.used_parameters?.infra?.length ? (
-          <View style={{ marginBottom: 20, padding: 16, backgroundColor: '#fff', borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
-            <Text style={{ fontSize: 20, fontWeight: "800", color: colors.text, marginBottom: 12 }}>Parâmetros Usados</Text>
-            <View style={{ borderWidth: 1, borderColor: colors.tint, borderRadius: 8, overflow: 'hidden' }}>
-              {sim.used_parameters.infra.map((i, idx) => (
-                <View key={idx} style={{ flexDirection: 'row', padding: 12, backgroundColor: idx % 2 === 0 ? colors.background : '#f9f9f9', borderBottomWidth: idx < sim.used_parameters!.infra.length - 1 ? 1 : 0, borderBottomColor: colors.tint }}>
-                  <Text style={{ flex: 1, fontWeight: '600', color: colors.text }}>{i.type}</Text>
-                  <Text style={{ flex: 1, color: colors.text }}>R$ {i.unit_value.toLocaleString("pt-BR")} | {i.installments} parcelas</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
+        <Text style={[styles.helperText, { marginTop: 8, fontWeight: "600" }]}>
+          Infraestrutura:
+        </Text>
+        {simulation.used_parameters.infra.map((item, idx) => (
+          <Text key={idx} style={styles.helperText}>
+            - {item.type}: R$ {formatCurrencyBRL(item.unit_value)} em{" "}
+            {item.installments}x
+          </Text>
+        ))}
+      </View>
 
-        <View style={{ flexDirection: "row", gap: 12, marginTop: 16, justifyContent: 'center' }}>
-          <TouchableOpacity
-            onPress={() => router.push({ pathname: "/simulations/edit/[id]", params: { id: String(id), data: encodeURIComponent(JSON.stringify(sim)) } })}
-            style={{ padding: 12, backgroundColor: colors.tint, borderRadius: 10, flex: 1, alignItems: 'center' }}
-          >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>Editar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleDelete}
-            style={{ padding: 12, backgroundColor: "#dc2626", borderRadius: 10, flex: 1, alignItems: 'center' }}
-          >
-            <Text style={{ color: "#fff", fontWeight: '600' }}>Excluir</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      {/* Cronograma de recebíveis */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Cronograma de recebíveis</Text>
+
+        {Array.isArray(simulation.receivables_schedule) &&
+          simulation.receivables_schedule.length > 0 ? (
+          simulation.receivables_schedule.map((item, idx) => {
+            // cada item é algo tipo { "2037": -181152 }
+            const year = Object.keys(item)[0];
+            const rawValue = year ? (item as any)[year] : 0;
+
+            return (
+              <View key={idx} style={styles.row}>
+                <Text>Ano {year}</Text>
+                <Text>R$ {formatCurrencyBRL(rawValue)}</Text>
+              </View>
+            );
+          })
+        ) : (
+          <Text style={styles.helperText}>
+            Nenhum cronograma calculado para esta simulação.
+          </Text>
+        )}
+      </View>
+
+      {/* Configuração */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Configuração</Text>
+        <Text style={styles.helperText}>
+          Carência: {simulation.carency_period} anos
+        </Text>
+        <Text style={styles.helperText}>
+          Anos de recebimento: {simulation.receiving_years} anos
+        </Text>
+        <Text style={styles.helperText}>
+          Recebimento anual médio: R$ {formatCurrencyBRL(simulation.annual_receivable)}
+        </Text>
+        <Text style={styles.helperText}>
+          Lucro do parceiro: R$ {formatCurrencyBRL(simulation.partner_profit)}
+        </Text>
+      </View>
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: "#2563eb" }]}
+          onPress={() =>
+            router.push({
+              pathname: "/simulations/edit/[id]",
+              params: { id: simulation.id },
+            })
+          }
+        >
+          <Text style={styles.actionText}>Editar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: "#dc2626" }]}
+          onPress={handleDelete}
+        >
+          <Text style={styles.actionText}>Excluir</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+}
+
+function Row({
+  label,
+  value,
+  bold,
+}: {
+  label: string;
+  value: number | string | null | undefined;
+  bold?: boolean;
+}) {
+  return (
+    <View style={styles.row}>
+      <Text style={bold ? styles.bold : undefined}>{label}</Text>
+      <Text style={bold ? styles.bold : undefined}>
+        R$ {formatCurrencyBRL(value)}
+      </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: { flex: 1, padding: 16 },
+  title: { fontSize: 20, fontWeight: "700", marginBottom: 4 },
+  subtitle: { color: "#6b7280", marginBottom: 12 },
+  card: {
+    marginBottom: 12,
+    padding: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    elevation: 2,
+  },
+  cardTitle: { fontWeight: "600", marginBottom: 8 },
+  helperText: { color: "#374151", marginBottom: 2, fontSize: 14 },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  bold: { fontWeight: "600" },
+  buttonRow: {
+    flexDirection: "row",
+    marginTop: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  actionText: { color: "#fff", textAlign: "center", fontWeight: "600" },
+});

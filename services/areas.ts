@@ -16,7 +16,9 @@ export async function listAreasByOwner(ownerId: string, p0: { timestamp: number;
 
 export async function getArea(id: string): Promise<Area> {
   const { data } = await api.get<Area>(`/area/${id}`);
-  return data;
+  return Object.fromEntries(
+    Object.entries(data).filter(([_, value]) => value !== null)
+  ) as Area;
 }
 
 // ... (createArea permanece igual) ...

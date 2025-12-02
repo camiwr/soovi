@@ -1,59 +1,88 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  StyleSheet,
+  Alert,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { useAuth } from "@/context/AuthContext";
+
 import { listAreasByOwner } from "@/services/areas";
 import type { Area } from "@/types/area";
+import { useAuth } from "@/context/AuthContext";
 
-export default function SelectAreaScreen() {
+export default function SimulationSelectAreaScreen() {
   const router = useRouter();
   const { user } = useAuth();
+
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(()=>{(async()=>{
-    try{
-      if(!user?.id) throw new Error("Usuário não autenticado.");
-      setAreas(await listAreasByOwner(user.id));
-    }catch(e:any){ Alert.alert("Erro", e?.message ?? "Falha ao carregar áreas."); }
-    finally{ setLoading(false); }
-  })();}, [user?.id]);
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!user?.id) throw new Error("Usuário não autenticado.");
+        // aqui eu uso tb o timestamp por causa da assinatura atual do service
+        const data = await listAreasByOwner(user.id, { timestamp: Date.now() });
+        setAreas(data);
+      } catch (e: any) {
+        console.log("Erro ao carregar áreas", e);
+        Alert.alert("Erro", e?.message ?? "Falha ao carregar áreas.");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [user?.id]);
 
-  if (loading) return <View style={{flex:1,justifyContent:"center",alignItems:"center"}}><ActivityIndicator/></View>;
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator />
+        <Text>Carregando áreas...</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={{ flex:1 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <Text style={{ fontSize: 24, color: '#007AFF' }}>←</Text>
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: '600', marginLeft: 16 }}>Selecionar Área</Text>
-      </View>
-      <View style={{ flex:1, padding:16 }}>
-      <Text style={{ fontSize:18, fontWeight:"800", marginBottom:12 }}>Escolha uma área para simular</Text>
+    <View style={styles.container}>
+      <Text style={styles.infoText}>
+        Selecione a área para a qual deseja gerar uma simulação:
+      </Text>
 
       <FlatList
         data={areas}
-        keyExtractor={(i)=>i.id}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={{ borderWidth:1, borderColor:"#eee", borderRadius:10, padding:12, marginBottom:10, backgroundColor:"#fff" }}>
-            <Text style={{ fontSize:16, fontWeight:"700" }}>{item.description}</Text>
-            <Text>Área total: {item.total_area_hectare} ha</Text>
-            {item.location ? <Text>Localização: {item.location}</Text> : null}
-
-            <TouchableOpacity
-              onPress={()=>router.push({ pathname:"/simulations/create", params:{ areaId: item.id } })}
-              style={{ marginTop:10, backgroundColor:"#2563eb", padding:10, borderRadius:8 }}
-            >
-              <Text style={{ color:"#fff", textAlign:"center", fontWeight:"700" }}>
-                Simular a partir desta área
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() =>
+              router.push({
+                pathname: "/simulations/create",
+                params: { areaId: item.id },
+              })
+            }
+          >
+            <Text style={styles.cardTitle}>{item.description}</Text>
+          </TouchableOpacity>
         )}
-        ListEmptyComponent={<Text>Você ainda não tem áreas cadastradas.</Text>}
       />
-    </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: { flex: 1, padding: 16 },
+  infoText: { marginBottom: 16, color: "#4b5563" },
+  card: {
+    marginBottom: 12,
+    padding: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    elevation: 2,
+  },
+  cardTitle: { fontSize: 16, fontWeight: "600" },
+});

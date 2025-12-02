@@ -1,31 +1,36 @@
 import { api } from "@/services/client";
-// Importa os tipos atualizados (incluindo carency_period)
-import type { Simulation, CreateSimulationDTO, UpdateSimulationDTO } from "@/types/simulation";
+import type {
+  Simulation,
+  SimulationListResponse,
+  CreateSimulationDTO,
+  UpdateSimulationDTO,
+} from "@/types/simulation";
 
-export async function listSimulations(): Promise<Simulation[]> {
-  const { data } = await api.get<Simulation[]>("/simulation");
-  return Array.isArray(data) ? data : [];
+export async function listSimulations(page = 1, limit = 10): Promise<SimulationListResponse> {
+  const { data } = await api.get<SimulationListResponse>("/simulation", {
+    params: { page, limit },
+  });
+  return data;
 }
 
-/**
- * Cria uma nova simulação.
- * O payload (CreateSimulationDTO) agora inclui 'carency_period'.
- */
+export async function getSimulation(id: string): Promise<Simulation> {
+  const { data } = await api.get<Simulation>(`/simulation/${id}`);
+  return data;
+}
+
 export async function createSimulation(payload: CreateSimulationDTO): Promise<Simulation> {
   const { data } = await api.post<Simulation>("/simulation", payload);
   return data;
 }
 
-/**
- * Atualiza uma simulação.
- * O payload (UpdateSimulationDTO) agora pode incluir 'carency_period'.
- */
-export async function updateSimulation(id: string, payload: UpdateSimulationDTO) {
-  const { data } = await api.patch(`/simulation/${id}`, payload);
+export async function updateSimulation(
+  id: string,
+  payload: UpdateSimulationDTO
+): Promise<Simulation> {
+  const { data } = await api.patch<Simulation>(`/simulation/${id}`, payload);
   return data;
 }
 
-export async function deleteSimulation(id: string) {
-  const { data } = await api.delete(`/simulation/${id}`);
-  return data;
+export async function deleteSimulation(id: string): Promise<void> {
+  await api.delete(`/simulation/${id}`);
 }
