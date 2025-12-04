@@ -80,9 +80,9 @@ export default function SimulationListScreen() {
                 }
               >
                 <Text style={styles.cardTitle}>
-                  Simulação de Área: {item.area_name}
+                  Simulação da Área: {areaLabel}
                 </Text>
-                <Text style={styles.cardSubtitle}>Área: {item.area_name ?? "Área não informada"}</Text>
+                <Text style={styles.cardSubtitle}>Área: {areaLabel ?? "Área não informada"}</Text>
                 <Text style={styles.cardSubtitle}>
                   Receita líquida: {formatCurrencyBRL(item.net_revenue)}
                 </Text>

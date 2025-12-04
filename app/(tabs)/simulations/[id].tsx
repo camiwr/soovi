@@ -111,7 +111,7 @@ export default function SimulationDetailScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Simulação de Área:</Text>
+      <Text style={styles.title}>Simulação de Área: {areaName}</Text>
       <Text style={styles.subtitle}>
         Área: {areaLabel} •{" "}
         {new Date(simulation.simulated_at).toLocaleDateString()}

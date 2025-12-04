@@ -16,7 +16,7 @@ export type ReceivablesSchedule = Record<string, number>;
 export type Simulation = {
   id: string;
   area_id: string;
-  area_name?: string; 
+  area_name: string; 
   simulated_at: string;
   gross_estimated_value: number;
   infra_cost: number;
