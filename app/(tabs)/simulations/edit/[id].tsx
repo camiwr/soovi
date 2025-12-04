@@ -1,3 +1,4 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,12 +9,11 @@ import {
   View,
 } from "react-native";
 import InputSpinner from "react-native-input-spinner";
-import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { getSimulation, updateSimulation } from "@/services/simulations";
 import { getArea } from "@/services/areas";
-import type { Simulation } from "@/types/simulation";
+import { getSimulation, updateSimulation } from "@/services/simulations";
 import type { Area } from "@/types/area";
+import type { Simulation } from "@/types/simulation";
 
 export default function EditSimulationScreen() {
   const router = useRouter();
@@ -57,35 +57,47 @@ export default function EditSimulationScreen() {
   }, [id]);
 
   const onSubmit = async () => {
-  try {
-    if (!simulation) throw new Error("Simulação inválida.");
+    try {
+      if (!simulation) throw new Error("Simulação inválida.");
 
-    const receiving_years = Math.max(1, parseInt(years || "5", 10));
-    const carency_period = Math.max(0, parseInt(carency || "0", 10));
+      const receiving_years = Math.max(1, parseInt(years || "5", 10));
+      const carency_period = Math.max(0, parseInt(carency || "0", 10));
 
-    await updateSimulation(String(simulation.id), {
-      area_id: simulation.area_id,   
-      receiving_years,
-      carency_period,
-    });
+      // Verifica se os valores foram alterados
+      if (
+        receiving_years === simulation.receiving_years &&
+        carency_period === simulation.carency_period
+      ) {
+        Alert.alert("Atenção", "Nenhum parâmetro foi alterado.");
+        return;
+      }
 
-    router.replace({
-      pathname: "/simulations/[id]",
-      params: { id: String(simulation.id) },
-    });
+      console.log("Atualizando simulação com os valores:", {
+        area_id: simulation.area_id,
+        receiving_years,
+        carency_period,
+      });
 
-    Alert.alert("Sucesso", "Simulação atualizada!");
-  } catch (e: any) {
-    console.log("Erro ao atualizar simulação", e?.response?.data ?? e);
-    Alert.alert(
-      "Erro",
-      e?.response?.data?.message ??
-        e?.message ??
-        "Falha ao atualizar simulação."
-    );
-  }
-};
+      await updateSimulation(String(simulation.id), {
+        area_id: simulation.area_id,
+        receiving_years,
+        carency_period,
+      });
 
+      router.replace({
+        pathname: "/simulations/[id]",
+        params: { id: String(simulation.id) },
+      });
+
+      Alert.alert("Sucesso", "Simulação atualizada!");
+    } catch (e: any) {
+      console.log("Erro ao atualizar simulação", e?.response?.data ?? e);
+      Alert.alert(
+        "Erro",
+        e?.response?.data?.message || e?.message || "Falha ao atualizar simulação."
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -107,7 +119,6 @@ export default function EditSimulationScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
         {area && (
           <View
