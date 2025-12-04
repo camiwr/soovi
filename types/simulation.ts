@@ -45,8 +45,14 @@ export type SimulationListResponse = {
 
 export type CreateSimulationDTO = {
   area_id: string;
-  receiving_years: number;
+  receiving_years: number; 
   carency_period: number;
+};
+
+// Default values for CreateSimulationDTO
+export const DEFAULT_SIMULATION_VALUES: Pick<CreateSimulationDTO, 'receiving_years' | 'carency_period'> = {
+  receiving_years: 10,
+  carency_period: 0,
 };
 
 export type UpdateSimulationDTO = Partial<CreateSimulationDTO>;

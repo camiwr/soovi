@@ -208,18 +208,6 @@ export default function SimulationDetailScreen() {
 
       <View style={styles.buttonRow}>
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: "#2563eb" }]}
-          onPress={() =>
-            router.push({
-              pathname: "/simulations/edit/[id]",
-              params: { id: String(simulation.id) },
-            })
-          }
-        >
-          <Text style={styles.actionText}>Editar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "#dc2626" }]}
           onPress={handleDelete}
         >

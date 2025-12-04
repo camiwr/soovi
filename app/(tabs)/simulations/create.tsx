@@ -3,7 +3,6 @@ import { createSimulation } from "@/services/simulations";
 import type { Area } from "@/types/area";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import InputSpinner from "react-native-input-spinner";
 import {
   ActivityIndicator,
   Alert,
@@ -20,7 +19,7 @@ export default function CreateSimulationScreen() {
   const [area, setArea] = useState<Area | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [years, setYears] = useState("5");
+  const [years, setYears] = useState("10");
   const [carency, setCarency] = useState("0");
 
   useEffect(() => {
@@ -45,7 +44,7 @@ export default function CreateSimulationScreen() {
     try {
       if (!area) throw new Error("Área inválida.");
 
-      const receiving_years = Math.max(1, parseInt(years || "5", 10));
+      const receiving_years = Math.max(1, parseInt(years || "10", 10));
       const carency_period = Math.max(0, parseInt(carency || "0", 10));
 
       const created = await createSimulation({
@@ -58,7 +57,6 @@ export default function CreateSimulationScreen() {
         pathname: "/simulations/[id]",
         params: {
           id: created.id,
-          // opcional: caso queira aproveitar os dados imediatamente
           data: encodeURIComponent(JSON.stringify(created)),
         },
       });
@@ -139,45 +137,31 @@ export default function CreateSimulationScreen() {
         </View>
 
         {/* Anos de recebimento */}
-        <View style={{ gap: 6 }}>
-          <Text style={{ fontWeight: "600" }}>Anos de Recebimento *</Text>
-          <InputSpinner
-            value={Number(years || 5)}
-            onChange={(num) => setYears(String(num))}
-            min={1}
-            step={1}
-            skin="clean"
-            height={44}
-            buttonFontSize={18}
-            inputStyle={{ fontSize: 16 } as any}
-            style={{
-              borderWidth: 1,
-              borderColor: "#e5e7eb",
-              borderRadius: 10,
-              backgroundColor: "#fff",
-            }}
-          />
+        <View
+          style={{
+            padding: 12,
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            borderRadius: 10,
+            backgroundColor: "#fff",
+          }}
+        >
+          <Text style={{ fontWeight: "600" }}>Anos de Recebimento</Text>
+          <Text style={{ fontSize: 16, color: "#334155" }}>10 anos</Text>
         </View>
 
         {/* Anos de carência */}
-        <View style={{ gap: 6 }}>
-          <Text style={{ fontWeight: "600" }}>Anos de Carência *</Text>
-          <InputSpinner
-            value={Number(carency || 0)}
-            onChange={(num) => setCarency(String(num))}
-            min={0}
-            step={1}
-            skin="clean"
-            height={44}
-            buttonFontSize={18}
-            inputStyle={{ fontSize: 16 } as any}
-            style={{
-              borderWidth: 1,
-              borderColor: "#e5e7eb",
-              borderRadius: 10,
-              backgroundColor: "#fff",
-            }}
-          />
+        <View
+          style={{
+            padding: 12,
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            borderRadius: 10,
+            backgroundColor: "#fff",
+          }}
+        >
+          <Text style={{ fontWeight: "600" }}>Anos de Carência</Text>
+          <Text style={{ fontSize: 16, color: "#334155" }}>0 anos</Text>
         </View>
 
         {/* Botão de submit com estado interno */}
