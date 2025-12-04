@@ -1,4 +1,3 @@
-
 export type InfraItem = {
   type: string;
   unit_value: number;
@@ -12,13 +11,12 @@ export type UsedParameters = {
   infra: InfraItem[];
 };
 
-export type ReceivablesScheduleApiItem = {
-  [year: string]: number;
-};
+export type ReceivablesSchedule = Record<string, number>;
 
 export type Simulation = {
   id: string;
   area_id: string;
+  area_name?: string; 
   simulated_at: string;
   gross_estimated_value: number;
   infra_cost: number;
@@ -31,11 +29,10 @@ export type Simulation = {
   receiving_years: number;
   annual_receivable: number;
   used_parameters: UsedParameters;
-  receivables_schedule: ReceivablesScheduleApiItem[];
+  receivables_schedule: ReceivablesSchedule;
   area?: {
-    owner_id: string;
-    name?: string;
     description?: string;
+    [key: string]: any;
   };
 };
 

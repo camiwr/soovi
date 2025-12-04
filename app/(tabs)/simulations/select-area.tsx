@@ -25,7 +25,6 @@ export default function SimulationSelectAreaScreen() {
     (async () => {
       try {
         if (!user?.id) throw new Error("Usuário não autenticado.");
-        // aqui eu uso tb o timestamp por causa da assinatura atual do service
         const data = await listAreasByOwner(user.id, { timestamp: Date.now() });
         setAreas(data);
       } catch (e: any) {

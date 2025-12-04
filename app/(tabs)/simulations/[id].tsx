@@ -1,43 +1,28 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
   ActivityIndicator,
-  TouchableOpacity,
   Alert,
+  ScrollView,
   StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { getSimulation, deleteSimulation } from "@/services/simulations";
 import { getArea } from "@/services/areas";
-import type {
-  Simulation,
-  ReceivablesScheduleApiItem,
-} from "@/types/simulation";
+import { deleteSimulation, getSimulation } from "@/services/simulations";
+import type { Simulation } from "@/types/simulation";
 import { formatCurrencyBRL } from "@/utils/formatCurrency";
 
-
-type NormalizedScheduleItem = {
-  year: string;
-  value: number;
-};
-
-function normalizeSchedule(
-  schedule: ReceivablesScheduleApiItem[] | undefined
-): NormalizedScheduleItem[] {
-  if (!schedule) return [];
-  return schedule.map((item) => {
-    const [year, rawValue] = Object.entries(item)[0] ?? ["-", 0];
-    const num =
-      typeof rawValue === "number"
-        ? rawValue
-        : rawValue != null
-          ? Number(rawValue)
-          : 0;
-    return { year, value: Number.isNaN(num) ? 0 : num };
-  });
+function formatPercentage(
+  value: string | number | null | undefined
+): string {
+  if (value == null) return "-";
+  const num =
+    typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(num)) return "-";
+  return `${(num * 100).toFixed(2)}%`;
 }
 
 export default function SimulationDetailScreen() {
@@ -46,7 +31,6 @@ export default function SimulationDetailScreen() {
 
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [areaName, setAreaName] = useState<string | null>(null);
-  const [schedule, setSchedule] = useState<NormalizedScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,14 +38,16 @@ export default function SimulationDetailScreen() {
 
     (async () => {
       try {
-        const data = await getSimulation(id);
+        const data = await getSimulation(String(id));
         setSimulation(data);
-        setSchedule(normalizeSchedule(data.receivables_schedule));
 
-        // área: tenta usar o nome vindo direto, se não tiver, busca no endpoint de área
-        if (data.area?.name) {
-          setAreaName(data.area.name);
+        // Prioriza os campos que já vêm na simulação
+        if (data.area_name) {
+          setAreaName(data.area_name);
+        } else if (data.area?.description) {
+          setAreaName(data.area.description);
         } else {
+          // fallback: tenta buscar a área
           try {
             const area = await getArea(data.area_id);
             if (area?.description) setAreaName(area.description);
@@ -90,7 +76,7 @@ export default function SimulationDetailScreen() {
           onPress: async () => {
             try {
               if (!id) return;
-              await deleteSimulation(id);
+              await deleteSimulation(String(id));
               router.replace("/simulations");
             } catch (error) {
               console.log("Erro ao excluir simulação", error);
@@ -113,11 +99,19 @@ export default function SimulationDetailScreen() {
 
   const areaLabel =
     areaName ??
+    simulation.area_name ??
+    simulation.area?.description ??
     simulation.area_id;
+
+  const scheduleEntries = Object.entries(
+    simulation.receivables_schedule || {}
+  ); 
+
+  const { used_parameters } = simulation;
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Simulação</Text>
+      <Text style={styles.title}>Simulação de Área:</Text>
       <Text style={styles.subtitle}>
         Área: {areaLabel} •{" "}
         {new Date(simulation.simulated_at).toLocaleDateString()}
@@ -126,28 +120,50 @@ export default function SimulationDetailScreen() {
       {/* Resumo financeiro */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Resumo financeiro</Text>
-        <Row label="Valor bruto estimado" value={simulation.gross_estimated_value} />
+        <Row
+          label="Valor bruto estimado"
+          value={simulation.gross_estimated_value}
+        />
         <Row label="Infraestrutura" value={simulation.infra_cost} />
         <Row label="Impostos" value={simulation.tax_cost} />
         <Row label="Comissões" value={simulation.commission_cost} />
-        <Row label="Total de descontos" value={simulation.total_discounts} />
-        <Row label="Receita líquida" value={simulation.net_revenue} bold />
+        <Row
+          label="Total de descontos"
+          value={simulation.total_discounts}
+        />
+        <Row
+          label="Receita líquida"
+          value={simulation.net_revenue}
+          bold
+        />
       </View>
 
-      {/* Parâmetros – sem mostrar os UUIDs */}
+      {/* Parâmetros utilizados */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Parâmetros utilizados</Text>
+
         <Text style={styles.helperText}>
-          Impostos, comissão e lucro do parceiro foram aplicados conforme os
-          parâmetros cadastrados para esta área.
+          Imposto: {formatPercentage(used_parameters.imposto)}
+        </Text>
+        <Text style={styles.helperText}>
+          Comissão: {formatPercentage(used_parameters.comissao)}
+        </Text>
+        <Text style={styles.helperText}>
+          Lucro do parceiro:{" "}
+          {formatPercentage(used_parameters.lucro_parceiro)}
         </Text>
 
-        <Text style={[styles.helperText, { marginTop: 8, fontWeight: "600" }]}>
+        <Text
+          style={[
+            styles.helperText,
+            { marginTop: 8, fontWeight: "600" },
+          ]}
+        >
           Infraestrutura:
         </Text>
-        {simulation.used_parameters.infra.map((item, idx) => (
+        {used_parameters.infra.map((item, idx) => (
           <Text key={idx} style={styles.helperText}>
-            - {item.type}: R$ {formatCurrencyBRL(item.unit_value)} em{" "}
+            - {item.type}: {formatCurrencyBRL(item.unit_value)} em{" "}
             {item.installments}x
           </Text>
         ))}
@@ -157,41 +173,36 @@ export default function SimulationDetailScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Cronograma de recebíveis</Text>
 
-        {Array.isArray(simulation.receivables_schedule) &&
-          simulation.receivables_schedule.length > 0 ? (
-          simulation.receivables_schedule.map((item, idx) => {
-            // cada item é algo tipo { "2037": -181152 }
-            const year = Object.keys(item)[0];
-            const rawValue = year ? (item as any)[year] : 0;
-
-            return (
-              <View key={idx} style={styles.row}>
-                <Text>Ano {year}</Text>
-                <Text>R$ {formatCurrencyBRL(rawValue)}</Text>
-              </View>
-            );
-          })
-        ) : (
+        {scheduleEntries.length === 0 ? (
           <Text style={styles.helperText}>
             Nenhum cronograma calculado para esta simulação.
           </Text>
-        )}
+        ) : (
+          scheduleEntries.map(([year, value]) => (
+            <View key={year} style={styles.row}>
+              <Text>Ano {year}</Text>
+              <Text>{formatCurrencyBRL(value)}</Text>
+            </View>
+          ))
+        )
+        }
       </View>
 
       {/* Configuração */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Configuração</Text>
         <Text style={styles.helperText}>
-          Carência: {simulation.carency_period} anos
+          Carência: {simulation.carency_period} meses
         </Text>
         <Text style={styles.helperText}>
           Anos de recebimento: {simulation.receiving_years} anos
         </Text>
         <Text style={styles.helperText}>
-          Recebimento anual médio: R$ {formatCurrencyBRL(simulation.annual_receivable)}
+          Recebimento anual médio:{" "}
+          {formatCurrencyBRL(simulation.annual_receivable)}
         </Text>
         <Text style={styles.helperText}>
-          Lucro do parceiro: R$ {formatCurrencyBRL(simulation.partner_profit)}
+          Lucro do parceiro: {formatCurrencyBRL(simulation.partner_profit)}
         </Text>
       </View>
 
@@ -201,7 +212,7 @@ export default function SimulationDetailScreen() {
           onPress={() =>
             router.push({
               pathname: "/simulations/edit/[id]",
-              params: { id: simulation.id },
+              params: { id: String(simulation.id) },
             })
           }
         >
@@ -232,7 +243,7 @@ function Row({
     <View style={styles.row}>
       <Text style={bold ? styles.bold : undefined}>{label}</Text>
       <Text style={bold ? styles.bold : undefined}>
-        R$ {formatCurrencyBRL(value)}
+        {formatCurrencyBRL(value)}
       </Text>
     </View>
   );
@@ -240,34 +251,42 @@ function Row({
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 20, fontWeight: "700", marginBottom: 4 },
-  subtitle: { color: "#6b7280", marginBottom: 12 },
+  container: { flex: 1, padding: 16, backgroundColor: "#f9fafb" },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 8, color: "#1f2937" },
+  subtitle: { color: "#4b5563", marginBottom: 16, fontSize: 16 },
   card: {
-    marginBottom: 12,
-    padding: 16,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    elevation: 2,
+    marginBottom: 16,
+    padding: 20,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  cardTitle: { fontWeight: "600", marginBottom: 8 },
-  helperText: { color: "#374151", marginBottom: 2, fontSize: 14 },
+  cardTitle: { fontWeight: "700", marginBottom: 12, fontSize: 18, color: "#111827" },
+  helperText: { color: "#374151", marginBottom: 4, fontSize: 14 },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
   },
-  bold: { fontWeight: "600" },
+  bold: { fontWeight: "700", color: "#1f2937" },
   buttonRow: {
     flexDirection: "row",
-    marginTop: 8,
+    marginTop: 16,
     marginBottom: 16,
-    gap: 8,
+    gap: 12,
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 8,
+    elevation: 2,
   },
-  actionText: { color: "#fff", textAlign: "center", fontWeight: "600" },
+  actionText: { color: "#ffffff", textAlign: "center", fontWeight: "700", fontSize: 16 },
 });

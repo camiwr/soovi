@@ -10,54 +10,32 @@ import {
 import { useRouter } from "expo-router";
 
 import { listSimulations } from "@/services/simulations";
-import { listAreasByOwner } from "@/services/areas";
 import type { Simulation } from "@/types/simulation";
-import type { Area } from "@/types/area";
-import { useAuth } from "@/context/AuthContext";
-
-function formatCurrency(value: number | string | null | undefined) {
-  const num =
-    typeof value === "number"
-      ? value
-      : value != null
-      ? Number(value)
-      : 0;
-  if (Number.isNaN(num)) return "-";
-  return num.toFixed(2);
-}
+import { formatCurrencyBRL } from "@/utils/formatCurrency";
 
 export default function SimulationListScreen() {
   const router = useRouter();
-  const { user } = useAuth();
 
   const [simulations, setSimulations] = useState<Simulation[]>([]);
-  const [areaMap, setAreaMap] = useState<Record<string, Area>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        if (!user?.id) throw new Error("Usuário não autenticado.");
+        const resp = await listSimulations();
 
-        const [simResp, areas] = await Promise.all([
-          listSimulations(),
-          listAreasByOwner(user.id, { timestamp: Date.now() }),
-        ]);
+        const valid = (resp.simulationData || []).filter(
+          (item: any) => item && item.id
+        ) as Simulation[];
 
-        setSimulations(simResp.simulationData);
-
-        const map: Record<string, Area> = {};
-        areas.forEach((a) => {
-          map[a.id] = a;
-        });
-        setAreaMap(map);
-      } catch (e) {
-        console.log("Erro ao carregar simulações/áreas", e);
+        setSimulations(valid);
+      } catch (error) {
+        console.log("Erro ao carregar simulações", error);
       } finally {
         setLoading(false);
       }
     })();
-  }, [user?.id]);
+  }, []);
 
   if (loading) {
     return (
@@ -84,23 +62,29 @@ export default function SimulationListScreen() {
       ) : (
         <FlatList
           data={simulations}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => {
-            const areaName = areaMap[item.area_id]?.description ?? "Área desconhecida";
+            const areaLabel =
+              item.area_name ??
+              item.area?.description ??
+              "Área não informada";
+
             return (
               <TouchableOpacity
                 style={styles.card}
                 onPress={() =>
                   router.push({
                     pathname: "/simulations/[id]",
-                    params: { id: item.id },
+                    params: { id: String(item.id) },
                   })
                 }
               >
-                <Text style={styles.cardTitle}>Simulação #{item.id}</Text>
-                <Text style={styles.cardSubtitle}>Área: {areaName}</Text>
+                <Text style={styles.cardTitle}>
+                  Simulação de Área: {item.area_name}
+                </Text>
+                <Text style={styles.cardSubtitle}>Área: {item.area_name ?? "Área não informada"}</Text>
                 <Text style={styles.cardSubtitle}>
-                  Receita líquida: R$ {formatCurrency(item.net_revenue)}
+                  Receita líquida: {formatCurrencyBRL(item.net_revenue)}
                 </Text>
                 <Text style={styles.cardDate}>
                   Simulada em:{" "}
