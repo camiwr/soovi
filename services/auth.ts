@@ -1,5 +1,6 @@
 import axios from "axios";
 import { api } from "./client";
+import { Linking } from "react-native";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL!;
 
@@ -35,4 +36,11 @@ export async function safeGetMe(accessToken: string) {
     },
   });
   return data?.user ?? data;
+}
+
+export async function loginWithGoogle() {
+  const base = (API_URL || "").replace(/\/$/, "");
+  if (!base) throw new Error("API_URL não configurada.");
+  const url = `${base}/auth/google`;
+  await Linking.openURL(url);
 }

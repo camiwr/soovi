@@ -1,8 +1,12 @@
 import React from "react";
 import {
-  KeyboardAvoidingView, Platform, ScrollView, Text, View,
-} from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Link, Redirect, router } from "expo-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -11,15 +15,16 @@ import Toast from "react-native-toast-message";
 import * as Haptics from "expo-haptics";
 
 import { useAuth } from "../../context/AuthContext";
-import { loginPassword, safeGetMe } from "../../services/auth";
+import { loginPassword, safeGetMe, loginWithGoogle } from "../../services/auth";
 import { extractErrorMessage } from "../../services/normalize";
 import { decodeJwt } from "../../services/jwt";
 
 import FormTextInput from "../../components/FormTextInput";
 import PrimaryButton from "../../components/PrimaryButton";
-import SooviLogo from '../../assets/images/LOGO_SOOVI_AZUL.svg';
-const TouchableOpacity = require('react-native').TouchableOpacity;
-const Feather = require('react-native-vector-icons/Feather').default;
+import SooviLogo from "../../assets/images/LOGO_SOOVI_AZUL.svg";
+
+const TouchableOpacity = require("react-native").TouchableOpacity;
+const Feather = require("react-native-vector-icons/Feather").default;
 
 const schema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -59,6 +64,7 @@ async function waitForConsistentMeStrict({
       const meEmail = String(me?.email || "").toLowerCase();
       if (meEmail === expectedEmail) return me;
     } catch {
+      // ignora e tenta de novo
     }
     const jitter = Math.floor(Math.random() * 60);
     await sleep(delay + jitter);
@@ -73,7 +79,7 @@ const PasswordTextInput: React.FC<{ control: any }> = ({ control }) => {
   const [showPassword, setShowPassword] = React.useState(false);
 
   return (
-    <View style={{ position: 'relative', justifyContent: 'center' }}>
+    <View style={{ position: "relative", justifyContent: "center" }}>
       <FormTextInput
         name="password"
         control={control}
@@ -85,9 +91,19 @@ const PasswordTextInput: React.FC<{ control: any }> = ({ control }) => {
       <TouchableOpacity
         onPress={() => setShowPassword((s: boolean) => !s)}
         activeOpacity={0.7}
-        style={{ position: 'absolute', right: 12, top: 5, height: 40, justifyContent: 'center' }}
+        style={{
+          position: "absolute",
+          right: 12,
+          top: 5,
+          height: 40,
+          justifyContent: "center",
+        }}
       >
-        <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#6B7280" />
+        <Feather
+          name={showPassword ? "eye" : "eye-off"}
+          size={20}
+          color="#6B7280"
+        />
       </TouchableOpacity>
     </View>
   );
@@ -96,10 +112,16 @@ const PasswordTextInput: React.FC<{ control: any }> = ({ control }) => {
 export default function SignIn() {
   const { user, setSession, clearSession } = useAuth();
 
-  const { control, handleSubmit, formState: { isSubmitting } } = useForm<FormData>({
+  const {
+    control,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
   });
+
+  const [googleLoading, setGoogleLoading] = React.useState(false);
 
   if (user) return <Redirect href="/(tabs)" />;
 
@@ -107,12 +129,18 @@ export default function SignIn() {
     const expectedEmail = data.email.toLowerCase();
 
     try {
-      const raw = await loginPassword({ email: expectedEmail, password: data.password });
-      
+      const raw = await loginPassword({
+        email: expectedEmail,
+        password: data.password,
+      });
+
       const accessToken =
         raw?.accessToken ?? raw?.access_token ?? raw?.data?.accessToken ?? null;
       const refreshToken =
-        raw?.refreshToken ?? raw?.refresh_token ?? raw?.data?.refreshToken ?? null;
+        raw?.refreshToken ??
+        raw?.refresh_token ??
+        raw?.data?.refreshToken ??
+        null;
 
       if (!accessToken) throw new Error("Token ausente na resposta de login.");
 
@@ -128,7 +156,9 @@ export default function SignIn() {
 
         await setSession({ user: me, accessToken, refreshToken });
         Toast.show({ type: "success", text1: "Bem-vindo!" });
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success
+        );
         router.replace("/(tabs)");
         return;
       } catch {
@@ -150,12 +180,14 @@ export default function SignIn() {
               });
               await setSession({ user: meLater, accessToken, refreshToken });
             } catch {
-
+              // se ainda falhar, mantém sessão só com token
             }
           })();
 
           Toast.show({ type: "success", text1: "Bem-vindo!" });
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          await Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success
+          );
           router.replace("/(tabs)");
           return;
         }
@@ -166,7 +198,9 @@ export default function SignIn() {
           text1: "Login bloqueado",
           text2: "As credenciais não correspondem ao usuário.",
         });
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        await Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Error
+        );
       }
     } catch (e: any) {
       await clearSession();
@@ -175,35 +209,182 @@ export default function SignIn() {
         text1: "Não foi possível entrar",
         text2: "Email ou senha inválidos.",
       });
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Error
+      );
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setGoogleLoading(true);
+      await loginWithGoogle();
+      // O fluxo de retorno (deep link / callback) você acerta depois com o back
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e: any) {
+      console.log("Erro ao iniciar login com Google", e);
+      Toast.show({
+        type: "error",
+        text1: "Não foi possível abrir o Google",
+        text2:
+          extractErrorMessage(e) ??
+          "Tente novamente em alguns instantes.",
+      });
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Error
+      );
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
   return (
-    <SafeAreaProvider style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
-          <View style={{ flex: 1, padding: 20, justifyContent: "center", backgroundColor: "#F9FAFB" }}>
-            <View style={{ justifyContent: 'center', alignItems: 'center', bottom: 30}}>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: "#F9FAFB" }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <View
+            style={{
+              flex: 1,
+              padding: 20,
+              justifyContent: "center",
+              backgroundColor: "#F9FAFB",
+            }}
+          >
+            <View
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+                bottom: 30,
+              }}
+            >
               <SooviLogo width={200} height={60} />
-              <Text style={{ fontSize: 16, color: '#6B7280', bottom: 15, top: 1 }}>Bem-vindo de volta</Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: "#6B7280",
+                  bottom: 15,
+                  top: 1,
+                }}
+              >
+                Bem-vindo de volta
+              </Text>
             </View>
-              <FormTextInput name="email" control={control} placeholder="E-mail" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
 
-              {/* CORREÇÃO (HOOKS): Renderiza o componente extraído */}
-              <PasswordTextInput control={control} />
+            <FormTextInput
+              name="email"
+              control={control}
+              placeholder="E-mail"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-              <PrimaryButton title="Entrar" onPress={handleSubmit(onSubmit)} loading={isSubmitting} />
+            <PasswordTextInput control={control} />
 
-              <View style={{ marginTop: 16, flexDirection: "row", alignItems: "center" }}>
-                <Text>Não tem conta? </Text>
-                <Link href="/(auth)/register" asChild>
-                  <Text style={{ color: "#2563EB", fontWeight: "700" }}>Cadastre-se</Text>
-                </Link>
+            <PrimaryButton
+              title="Entrar"
+              onPress={handleSubmit(onSubmit)}
+              loading={isSubmitting}
+            />
+
+            {/* separador */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginVertical: 16,
+              }}
+            >
+              <View
+                style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }}
+              />
+              <Text
+                style={{
+                  marginHorizontal: 8,
+                  color: "#6B7280",
+                  fontSize: 12,
+                }}
+              >
+                ou
+              </Text>
+              <View
+                style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }}
+              />
+            </View>
+
+            {/* Botão Google */}
+            <TouchableOpacity
+              onPress={handleGoogleSignIn}
+              activeOpacity={0.8}
+              disabled={googleLoading}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: "#FFFFFF",
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: "#E5E7EB",
+                paddingVertical: 10,
+                paddingHorizontal: 16,
+              }}
+            >
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  backgroundColor: "#FFFFFF",
+                  borderWidth: 1,
+                  borderColor: "#E5E7EB",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 8,
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: "700" }}>G</Text>
               </View>
+
+              {googleLoading ? (
+                <Text style={{ color: "#6B7280" }}>Abrindo Google...</Text>
+              ) : (
+                <Text
+                  style={{
+                    fontWeight: "600",
+                    color: "#111827",
+                  }}
+                >
+                  Continuar com Google
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <View
+              style={{
+                marginTop: 16,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <Text>Não tem conta? </Text>
+              <Link href="/(auth)/register" asChild>
+                <Text style={{ color: "#2563EB", fontWeight: "700" }}>
+                  Cadastre-se
+                </Text>
+              </Link>
             </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaProvider >
+    </SafeAreaProvider>
   );
 }
