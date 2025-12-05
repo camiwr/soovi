@@ -1,9 +1,35 @@
-const brlFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
+// utils/formatCurrencyBRL.ts
 
-export function formatCurrencyBRL(value: number | string | null | undefined) {
+const hasIntl =
+  typeof Intl !== "undefined" && typeof Intl.NumberFormat === "function";
+
+type SimpleFormatter = {
+  format: (n: number) => string;
+};
+
+function fallbackBRLFormat(n: number): string {
+  // formata do jeito "manual": R$ 1.234,56
+  const fixed = Number.isFinite(n) ? n.toFixed(2) : "0.00";
+  const parts = fixed.split(".");
+  let intPart = parts[0];
+  const decPart = parts[1] ?? "00";
+
+  // coloca ponto a cada 3 dígitos
+  intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  return `R$ ${intPart},${decPart}`;
+}
+
+const brlFormatter: SimpleFormatter = hasIntl
+  ? (new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }) as unknown as SimpleFormatter)
+  : { format: fallbackBRLFormat };
+
+export function formatCurrencyBRL(
+  value: number | string | null | undefined
+): string {
   const num =
     typeof value === "number"
       ? value
@@ -22,9 +48,7 @@ export function parseCurrencyBRLToNumber(
   value: string | null | undefined
 ): number | undefined {
   if (!value) return undefined;
-  // remove tudo que não for dígito, vírgula, ponto ou sinal
   const cleaned = value.replace(/[^\d,.-]/g, "");
-  // remove pontos de milhar e troca vírgula decimal por ponto
   const normalized = cleaned.replace(/\./g, "").replace(",", ".");
   const num = Number(normalized);
   return Number.isFinite(num) ? num : undefined;
