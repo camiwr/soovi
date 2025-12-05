@@ -125,14 +125,12 @@ export default function CreateSimulationScreen() {
             gap: 6,
           }}
         >
-          <Text style={{ fontWeight: "700" }}>O que é a Carência?</Text>
+          <Text style={{ fontWeight: "700" }}>Sem carência</Text>
           <Text style={{ color: "#334155" }}>
-            O período de carência é o tempo (em anos) desde o início do projeto
-            até o início do recebimento das parcelas.
+            Não há período de carência. Os pagamentos começam já no 1º ano do projeto.
           </Text>
           <Text style={{ color: "#334155" }}>
-            Ex: 2 anos de carência e 7 de recebimento significam que o fluxo de
-            caixa começa apenas no 3º ano e dura 7 anos.
+            Ex.: 7 anos de recebimento → os pagamentos começam no 1º ano e duram 7 anos.
           </Text>
         </View>
 
