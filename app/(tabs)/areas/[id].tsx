@@ -6,7 +6,6 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Toast from "react-native-toast-message";
 
-// Função helper para tratar mensagens de erro
 function errMsg(e: any) {
   const msg = e?.response?.data?.message;
   if (msg) {
@@ -15,7 +14,6 @@ function errMsg(e: any) {
   return e?.message ?? "Falha na requisição.";
 }
 
-// Função para formatar o tamanho do lote
 function formatLotSize(lotSize: string): string {
   const sizes: Record<string, { width: number; height: number }> = {
     TENx20: { width: 10, height: 20 },
@@ -29,7 +27,6 @@ function formatLotSize(lotSize: string): string {
   return `${area} m²`;
 }
 
-// Função utilitária para exibir toasts
 function showToast(type: "success" | "error" | "info", text1: string, text2?: string) {
   Toast.show({ type, text1, text2 });
 }

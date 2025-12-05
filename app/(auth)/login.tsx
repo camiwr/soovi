@@ -321,7 +321,7 @@ export default function SignIn() {
               />
             </View>
 
-            {/* Botão Google */}
+            {/* Botão Google
             <TouchableOpacity
               onPress={handleGoogleSignIn}
               activeOpacity={0.8}
@@ -366,7 +366,7 @@ export default function SignIn() {
                   Continuar com Google
                 </Text>
               )}
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <View
               style={{

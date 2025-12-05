@@ -16,19 +16,21 @@ import {
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { TextInputMask } from "react-native-masked-text";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-// Helper para tratar mensagens de erro
+import {
+  maskCurrencyInputBRL,
+  parseCurrencyBRLToNumber,
+} from "@/utils/formatCurrency";
+
 function errMsg(e: any) {
   const msg = e?.response?.data?.message;
   if (msg) {
-    return Array.isArray(msg) ? msg.join('\n') : String(msg);
+    return Array.isArray(msg) ? msg.join("\n") : String(msg);
   }
   return e?.message ?? "Falha ao criar.";
 }
 
-// Componente de botão para o seletor (definido localmente)
 const LotSizeButton: React.FC<{
   label: string;
   value: string;
@@ -54,12 +56,12 @@ export default function CreateAreaScreen() {
   const [loading, setLoading] = useState(false);
   const [isPickerVisible, setPickerVisible] = useState(false);
 
-  // Estados do formulário (antes em AreaForm)
+  // Estados do formulário
   const [description, setDescription] = useState("");
   const [totalArea, setTotalArea] = useState("");
   const [registration, setRegistration] = useState("");
   const [location, setLocation] = useState("");
-  const [suggestedLotPrice, setSuggestedLotPrice] = useState("");
+  const [suggestedLotPrice, setSuggestedLotPrice] = useState(""); // string mascarada
   const [lotSize, setLotSize] = useState(""); // "TENx20" | "TENx30"
 
   const lotSizes = [
@@ -69,6 +71,12 @@ export default function CreateAreaScreen() {
 
   const openPicker = () => setPickerVisible(true);
   const closePicker = () => setPickerVisible(false);
+
+  // 🔹 Handler da máscara de moeda (substitui TextInputMask)
+  const handlePriceChange = (text: string) => {
+    const masked = maskCurrencyInputBRL(text);
+    setSuggestedLotPrice(masked);
+  };
 
   const onSubmit = async () => {
     setLoading(true);
@@ -80,7 +88,12 @@ export default function CreateAreaScreen() {
       }
 
       // Validação dos campos obrigatórios
-      if (!description.trim() || !totalArea.trim() || !lotSize || !suggestedLotPrice.trim()) {
+      if (
+        !description.trim() ||
+        !totalArea.trim() ||
+        !lotSize ||
+        !suggestedLotPrice.trim()
+      ) {
         Alert.alert(
           "Atenção",
           "Preencha todos os campos obrigatórios: Descrição, Área total, Tamanho do lote e Valor sugerido para o lote."
@@ -90,23 +103,14 @@ export default function CreateAreaScreen() {
       }
 
       // Criar o payload a partir dos estados
-      const parseCurrency = (val: string | undefined): number | undefined => {
-        if (!val) return undefined;
-        // Remove tudo que não seja dígito, vírgula ou ponto (remove "R$ " e espaços)
-        const cleaned = val.replace(/[^\d,.-]/g, '');
-        // Remove pontos usados como separador de milhares e converte vírgula decimal para ponto
-        const normalized = cleaned.replace(/\./g, '').replace(',', '.');
-        const num = Number(normalized);
-        return Number.isFinite(num) ? num : undefined;
-      };
-
       const payload: CreateAreaDTO = {
         description: description.trim(),
         total_area_hectare: Number(totalArea) || 0,
         lot_size: lotSize,
         registration_number: registration.trim() || undefined,
         location: location.trim() || undefined,
-        suggested_lot_price: parseCurrency(suggestedLotPrice),
+        // 🔹 Agora usando o parser centralizado
+        suggested_lot_price: parseCurrencyBRLToNumber(suggestedLotPrice),
       };
 
       // Validação do frontend
@@ -127,8 +131,10 @@ export default function CreateAreaScreen() {
       const created = await createArea(payload, user.id);
 
       Alert.alert("Sucesso", "Área criada com sucesso!");
-      router.replace({ pathname: "/(tabs)/areas/[id]", params: { id: created.id } });
-
+      router.replace({
+        pathname: "/(tabs)/areas/[id]",
+        params: { id: created.id },
+      });
     } catch (e: any) {
       Alert.alert("Erro ao Criar", errMsg(e));
     } finally {
@@ -139,24 +145,30 @@ export default function CreateAreaScreen() {
   return (
     <SafeAreaProvider style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
       <KeyboardAwareScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 24 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 16,
+          paddingBottom: 24,
+        }}
         keyboardShouldPersistTaps="handled"
         enableOnAndroid={true}
-        extraScrollHeight={100} // Ajusta a rolagem para evitar sobreposição
+        extraScrollHeight={100}
       >
         {/* Campos do Formulário */}
         <Text style={[s.label, { marginTop: 20 }]}>Descrição *</Text>
         <TextInput
-          style={[s.input, { marginBottom: 15 }]} 
+          style={[s.input, { marginBottom: 15 }]}
           placeholder="ex.: Loteamento Santa Rita"
           value={description}
           onChangeText={setDescription}
           autoCapitalize="sentences"
         />
-        
-        <Text style={[s.label, { marginTop: 15 }]}>Área total (hectares) *</Text>
+
+        <Text style={[s.label, { marginTop: 15 }]}>
+          Área total (hectares) *
+        </Text>
         <TextInput
-          style={[s.input, { marginBottom: 15 }]} 
+          style={[s.input, { marginBottom: 15 }]}
           placeholder="ex.: 12.5"
           value={totalArea}
           onChangeText={setTotalArea}
@@ -164,19 +176,34 @@ export default function CreateAreaScreen() {
         />
 
         <Text style={[s.label, { marginTop: 15 }]}>Tamanho do lote *</Text>
-        <TouchableOpacity onPress={openPicker} style={[s.input, { justifyContent: "space-between", flexDirection: "row", alignItems: "center" }]}>
+        <TouchableOpacity
+          onPress={openPicker}
+          style={[
+            s.input,
+            {
+              justifyContent: "space-between",
+              flexDirection: "row",
+              alignItems: "center",
+            },
+          ]}
+        >
           <Text style={{ color: lotSize ? "#000" : "#9CA3AF" }}>
-            {lotSize ? lotSizes.find((item) => item.value === lotSize)?.label : "Selecione o tamanho do lote"}
+            {lotSize
+              ? lotSizes.find((item) => item.value === lotSize)?.label
+              : "Selecione o tamanho do lote"}
           </Text>
           <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
         </TouchableOpacity>
         {!!lotSize && (
-          <TouchableOpacity onPress={() => setLotSize("")} style={{ padding: 8 }}>
+          <TouchableOpacity
+            onPress={() => setLotSize("")}
+            style={{ padding: 8 }}
+          >
             <Text style={{ color: "#9CA3AF" }}>Limpar</Text>
           </TouchableOpacity>
         )}
 
-        <Modal visible={isPickerVisible} animationType="slide" transparent={true}>
+        <Modal visible={isPickerVisible} animationType="slide" transparent>
           <View style={s.modalOverlay}>
             <View style={s.modalContent}>
               <FlatList
@@ -194,7 +221,10 @@ export default function CreateAreaScreen() {
                   </TouchableOpacity>
                 )}
               />
-              <TouchableOpacity onPress={closePicker} style={s.modalCloseButton}>
+              <TouchableOpacity
+                onPress={closePicker}
+                style={s.modalCloseButton}
+              >
                 <Text style={s.modalCloseButtonText}>Fechar</Text>
               </TouchableOpacity>
             </View>
@@ -203,37 +233,33 @@ export default function CreateAreaScreen() {
 
         <Text style={[s.label, { marginTop: 15 }]}>Matrícula (opcional)</Text>
         <TextInput
-          style={[s.input, { marginBottom: 15 }]} 
+          style={[s.input, { marginBottom: 15 }]}
           placeholder="ex.: 12345-ABC"
           value={registration}
           onChangeText={setRegistration}
         />
-        
-        <Text style={[s.label, { marginTop: 15 }]}>Localização (opcional)</Text>
+
+        <Text style={[s.label, { marginTop: 15 }]}>
+          Localização (opcional)
+        </Text>
         <TextInput
           style={[s.input, { marginBottom: 15 }]}
           placeholder="Endereço, cidade ou coordenadas"
           value={location}
           onChangeText={setLocation}
         />
-        
-        <Text style={[s.label, { marginBottom: 15 }]}>Valor sugerido para o lote (R$)</Text>
-        <TextInputMask
-          type="money"
-          options={{
-            precision: 2,
-            separator: ",",
-            delimiter: ".",
-            unit: "R$ ",
-            suffixUnit: "",
-          }}
+
+        <Text style={[s.label, { marginBottom: 15 }]}>
+          Valor sugerido para o lote (R$)
+        </Text>
+        <TextInput
           value={suggestedLotPrice}
-          onChangeText={setSuggestedLotPrice}
+          onChangeText={handlePriceChange}
           keyboardType="numeric"
           placeholder="Preço sugerido do lote"
           style={[s.input, { marginBottom: 15 }]}
         />
-        
+
         {/* Botão de Salvar */}
         <TouchableOpacity
           onPress={onSubmit}
@@ -265,40 +291,43 @@ const s = StyleSheet.create({
     fontSize: 16,
   },
   lotSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   lotButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
+    borderColor: "#e5e7eb",
+    backgroundColor: "#fff",
     paddingVertical: 12,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   lotButtonSelected: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+    backgroundColor: "#3B82F6",
+    borderColor: "#3B82F6",
   },
   lotButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: "600",
+    color: "#374151",
   },
   lotButtonTextSelected: {
-    color: '#fff',
+    color: "#fff",
   },
   button: {
     padding: 14,
     borderRadius: 10,
     marginTop: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  buttonText: { 
-    color: "#fff", fontWeight: "700", textAlign: "center", fontSize: 16 
+  buttonText: {
+    color: "#fff",
+    fontWeight: "700",
+    textAlign: "center",
+    fontSize: 16,
   },
   modalOverlay: {
     flex: 1,

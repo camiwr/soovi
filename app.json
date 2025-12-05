@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "soovi",
-    "slug": "soovi",
+    "slug": "soovi-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "soovi",
@@ -40,9 +40,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "76363c56-5332-4de3-b349-f2b08aa3e4a8"
+        "projectId": "2a5a1c09-a061-45ef-812a-834cd4354152"
       }
     },
-    "owner": "camiwr"
+    "owner": "soovi-tecnologia-ltda"
   }
 }

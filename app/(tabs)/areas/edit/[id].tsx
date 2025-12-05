@@ -9,7 +9,6 @@ import { getArea, updateArea } from "@/services/areas";
 import type { Area, UpdateAreaDTO } from "@/types/area";
 import { useAuth } from "@/context/AuthContext";
 
-// Função helper para tratar mensagens de erro
 function errMsg(e: any) {
   const msg = e?.response?.data?.message;
   if (msg) {
@@ -18,7 +17,6 @@ function errMsg(e: any) {
   return e?.message ?? "Falha na requisição.";
 }
 
-// Helper: Componente de botão para o seletor (definido localmente)
 const LotSizeButton: React.FC<{
   label: string;
   value: string;

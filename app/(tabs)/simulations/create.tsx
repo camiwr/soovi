@@ -19,8 +19,8 @@ export default function CreateSimulationScreen() {
   const [area, setArea] = useState<Area | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [years, setYears] = useState("10");
-  const [carency, setCarency] = useState("0");
+  const [years] = useState("10");
+  const [carency] = useState("0");
 
   useEffect(() => {
     (async () => {
