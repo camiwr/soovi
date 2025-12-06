@@ -22,14 +22,13 @@
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       },
-      
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.camiwr.soovi"
+      "package": "com.soovi.app"
     },
     "web": {
       "bundler": "metro",
