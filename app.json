@@ -8,17 +8,17 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/svg/splash-soovi.svg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/images/splash-icon.png"
+      "icon": "./assets/images/svg/splash-soovi.svg"
     },
     "android": {
       "splash": {
-        "image": "./assets/images/splash-icon.png",
+        "image": "./assets/images/svg/splash-soovi.svg",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       },
