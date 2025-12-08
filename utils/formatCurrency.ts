@@ -1,5 +1,3 @@
-// utils/formatCurrencyBRL.ts
-
 const hasIntl =
   typeof Intl !== "undefined" && typeof Intl.NumberFormat === "function";
 
@@ -7,8 +5,8 @@ type SimpleFormatter = {
   format: (n: number) => string;
 };
 
+
 function fallbackBRLFormat(n: number): string {
-  // formata do jeito "manual": R$ 1.234,56
   const fixed = Number.isFinite(n) ? n.toFixed(2) : "0.00";
   const parts = fixed.split(".");
   let intPart = parts[0];

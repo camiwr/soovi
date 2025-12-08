@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import SooviLogo from '../../assets/images/LOGO_SOOVI_AZUL.svg';
+import SooviLogo from '../../assets/images/svg/soovi-logo-azul.svg';
 import { useAuth } from "../../context/AuthContext";
 
 type Activity = {

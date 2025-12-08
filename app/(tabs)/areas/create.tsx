@@ -18,10 +18,7 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import {
-  maskCurrencyInputBRL,
-  parseCurrencyBRLToNumber,
-} from "@/utils/formatCurrency";
+import { maskCurrencyInputBRL, parseCurrencyBRLToNumber } from "@/utils/formatCurrency";
 
 function errMsg(e: any) {
   const msg = e?.response?.data?.message;

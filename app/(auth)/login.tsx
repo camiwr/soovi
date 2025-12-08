@@ -21,7 +21,8 @@ import { decodeJwt } from "../../services/jwt";
 
 import FormTextInput from "../../components/FormTextInput";
 import PrimaryButton from "../../components/PrimaryButton";
-import SooviLogo from "../../assets/images/LOGO_SOOVI_AZUL.svg";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
+import SooviLogo from "../../assets/images/svg/soovi-logo-azul.svg";
 
 const TouchableOpacity = require("react-native").TouchableOpacity;
 const Feather = require("react-native-vector-icons/Feather").default;
@@ -219,7 +220,6 @@ export default function SignIn() {
     try {
       setGoogleLoading(true);
       await loginWithGoogle();
-      // O fluxo de retorno (deep link / callback) você acerta depois com o back
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (e: any) {
       console.log("Erro ao iniciar login com Google", e);
@@ -297,77 +297,17 @@ export default function SignIn() {
             />
 
             {/* separador */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                marginVertical: 16,
-              }}
-            >
-              <View
-                style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }}
-              />
-              <Text
-                style={{
-                  marginHorizontal: 8,
-                  color: "#6B7280",
-                  fontSize: 12,
-                }}
-              >
-                ou
-              </Text>
-              <View
-                style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }}
-              />
+            <View style={{ marginVertical: 16, flexDirection: "row", alignItems: "center" }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
+              <Text style={{ marginHorizontal: 8, color: "#9CA3AF", fontSize: 12 }}>ou</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
             </View>
 
-            {/* Botão Google
-            <TouchableOpacity
+            {/* Botão Google */}
+            <GoogleSignInButton
               onPress={handleGoogleSignIn}
-              activeOpacity={0.8}
-              disabled={googleLoading}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#FFFFFF",
-                borderRadius: 10,
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-                paddingVertical: 10,
-                paddingHorizontal: 16,
-              }}
-            >
-              <View
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  backgroundColor: "#FFFFFF",
-                  borderWidth: 1,
-                  borderColor: "#E5E7EB",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 8,
-                }}
-              >
-                <Text style={{ fontSize: 14, fontWeight: "700" }}>G</Text>
-              </View>
-
-              {googleLoading ? (
-                <Text style={{ color: "#6B7280" }}>Abrindo Google...</Text>
-              ) : (
-                <Text
-                  style={{
-                    fontWeight: "600",
-                    color: "#111827",
-                  }}
-                >
-                  Continuar com Google
-                </Text>
-              )}
-            </TouchableOpacity> */}
-
+              loading={googleLoading}
+            />
             <View
               style={{
                 marginTop: 16,
