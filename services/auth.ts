@@ -38,9 +38,9 @@ export async function safeGetMe(accessToken: string) {
   return data?.user ?? data;
 }
 
-export async function loginWithGoogle() {
-  const base = (API_URL || "").replace(/\/$/, "");
-  if (!base) throw new Error("API_URL não configurada.");
-  const url = `${base}/auth/google`;
-  await Linking.openURL(url);
+export async function loginWithGoogle(payload: { email: string; name: string }) {
+  console.log("[auth.loginWithGoogle] payload:", payload);
+  const { data } = await api.post("/auth/google/", payload); // ajuste se sua rota for outra
+  console.log("[auth.loginWithGoogle] response:", data);
+  return data;
 }

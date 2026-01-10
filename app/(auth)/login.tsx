@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { Link, Redirect, router } from "expo-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,7 +18,6 @@ import * as Haptics from "expo-haptics";
 import { useAuth } from "../../context/AuthContext";
 import { loginPassword, safeGetMe, loginWithGoogle } from "../../services/auth";
 import { extractErrorMessage } from "../../services/normalize";
-import { decodeJwt } from "../../services/jwt";
 
 import FormTextInput from "../../components/FormTextInput";
 import PrimaryButton from "../../components/PrimaryButton";
@@ -33,47 +33,59 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-// helpers
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+GoogleSignin.configure({
+  iosClientId:
+    "998161092266-gg85ijqmb2apd1eddg29ulju6ere7hsl.apps.googleusercontent.com",
+});
 
-async function waitForConsistentMeStrict({
-  accessToken,
-  expectedEmail,
-  maxDurationMs = 15000,
-  baseDelayMs = 200,
-  factor = 1.9,
-  warmupMs = 250,
-}: {
+type SessionPayload = {
+  user: any | null;
   accessToken: string;
-  expectedEmail: string;
-  maxDurationMs?: number;
-  baseDelayMs?: number;
-  factor?: number;
-  warmupMs?: number;
-}) {
-  let elapsed = 0;
-  let delay = baseDelayMs;
+  refreshToken: string | null; // nunca undefined
+};
 
-  if (warmupMs > 0) {
-    await sleep(warmupMs);
-    elapsed += warmupMs;
-  }
+function normalizeAuthTokens(raw: any): { accessToken: string | null; refreshToken: string | null } {
+  const accessToken =
+    raw?.accessToken ??
+    raw?.access_token ??
+    raw?.data?.accessToken ??
+    raw?.data?.access_token ??
+    null;
 
-  while (elapsed <= maxDurationMs) {
-    try {
-      const me = await safeGetMe(accessToken);
-      const meEmail = String(me?.email || "").toLowerCase();
-      if (meEmail === expectedEmail) return me;
-    } catch {
-      // ignora e tenta de novo
-    }
-    const jitter = Math.floor(Math.random() * 60);
-    await sleep(delay + jitter);
-    elapsed += delay + jitter;
-    delay = Math.min(Math.floor(delay * factor), 1400);
-  }
+  const refreshToken =
+    raw?.refreshToken ??
+    raw?.refresh_token ??
+    raw?.data?.refreshToken ??
+    raw?.data?.refresh_token ??
+    null;
 
-  throw new Error("Timeout esperando consistência do /users/me.");
+  return {
+    accessToken: accessToken ?? null,
+    refreshToken: refreshToken ?? null,
+  };
+}
+
+async function getGoogleProfile(): Promise<{ email: string; name: string }> {
+  console.log("[Google] hasPlayServices...");
+  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+  console.log("[Google] signIn...");
+  const info: any = await GoogleSignin.signIn();
+  console.log("[Google] signIn result:", info);
+
+  const user = info?.user ?? info?.data?.user ?? info?.data ?? info;
+
+  const email = String(user?.email ?? "").toLowerCase();
+  const name =
+    user?.name ??
+    user?.givenName ??
+    user?.displayName ??
+    (email ? email.split("@")[0] : "");
+
+  console.log("[Google] parsed:", { email, name });
+
+  if (!email) throw new Error("Google não retornou e-mail.");
+  return { email, name };
 }
 
 const PasswordTextInput: React.FC<{ control: any }> = ({ control }) => {
@@ -100,11 +112,7 @@ const PasswordTextInput: React.FC<{ control: any }> = ({ control }) => {
           justifyContent: "center",
         }}
       >
-        <Feather
-          name={showPassword ? "eye" : "eye-off"}
-          size={20}
-          color="#6B7280"
-        />
+        <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#6B7280" />
       </TouchableOpacity>
     </View>
   );
@@ -124,117 +132,109 @@ export default function SignIn() {
 
   const [googleLoading, setGoogleLoading] = React.useState(false);
 
-  if (user) return <Redirect href="/(tabs)" />;
+  console.log("[SignIn] Render", { hasUser: !!user });
+
+  if (user) {
+    console.log("[SignIn] Usuário já logado, redirecionando para /(tabs)");
+    return <Redirect href="/(tabs)" />;
+  }
+
+  //  LOGIN NORMAL (email/senha) 
 
   const onSubmit = async (data: FormData) => {
     const expectedEmail = data.email.toLowerCase();
+    console.log("[SignIn] onSubmit chamado", { expectedEmail });
 
     try {
+      console.log("[SignIn] Chamando loginPassword...");
       const raw = await loginPassword({
         email: expectedEmail,
         password: data.password,
       });
+      console.log("[SignIn] loginPassword RAW:", raw);
 
-      const accessToken =
-        raw?.accessToken ?? raw?.access_token ?? raw?.data?.accessToken ?? null;
-      const refreshToken =
-        raw?.refreshToken ??
-        raw?.refresh_token ??
-        raw?.data?.refreshToken ??
-        null;
+      const { accessToken, refreshToken } = normalizeAuthTokens(raw);
+      console.log("[SignIn] Tokens normalizados", { hasAccess: !!accessToken, hasRefresh: !!refreshToken });
 
       if (!accessToken) throw new Error("Token ausente na resposta de login.");
 
-      try {
-        const me = await waitForConsistentMeStrict({
-          accessToken,
-          expectedEmail,
-          maxDurationMs: 15000,
-          baseDelayMs: 220,
-          factor: 1.9,
-          warmupMs: 300,
-        });
+      console.log("[SignIn] Chamando /users/me com accessToken...");
+      const me = await safeGetMe(accessToken);
+      console.log("[SignIn] /users/me:", me);
 
-        await setSession({ user: me, accessToken, refreshToken });
-        Toast.show({ type: "success", text1: "Bem-vindo!" });
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success
-        );
-        router.replace("/(tabs)");
-        return;
-      } catch {
-        const claims = decodeJwt(accessToken);
-        const tokenEmail = String(claims?.email ?? claims?.sub ?? "").toLowerCase();
+      const payload: SessionPayload = {
+        user: me ?? null,
+        accessToken,
+        refreshToken: refreshToken ?? null,
+      };
 
-        if (tokenEmail && tokenEmail === expectedEmail) {
-          await setSession({ user: null, accessToken, refreshToken });
-
-          (async () => {
-            try {
-              const meLater = await waitForConsistentMeStrict({
-                accessToken,
-                expectedEmail,
-                maxDurationMs: 20000,
-                baseDelayMs: 300,
-                factor: 1.8,
-                warmupMs: 0,
-              });
-              await setSession({ user: meLater, accessToken, refreshToken });
-            } catch {
-              // se ainda falhar, mantém sessão só com token
-            }
-          })();
-
-          Toast.show({ type: "success", text1: "Bem-vindo!" });
-          await Haptics.notificationAsync(
-            Haptics.NotificationFeedbackType.Success
-          );
-          router.replace("/(tabs)");
-          return;
-        }
-
-        await clearSession();
-        Toast.show({
-          type: "error",
-          text1: "Login bloqueado",
-          text2: "As credenciais não correspondem ao usuário.",
-        });
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Error
-        );
-      }
+      await setSession(payload);
+      Toast.show({ type: "success", text1: "Bem-vindo!" });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/(tabs)");
     } catch (e: any) {
+      console.log("[SignIn] ERRO login senha:", e);
+      console.log("[SignIn] ERRO response:", e?.response?.data);
+
       await clearSession();
       Toast.show({
         type: "error",
         text1: "Não foi possível entrar",
-        text2: "Email ou senha inválidos.",
+        text2: e?.response?.data?.message ?? e?.message ?? "Email ou senha inválidos.",
       });
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Error
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };
 
+
+  //  LOGIN GOOGLE — básico:
+
   const handleGoogleSignIn = async () => {
+    console.log("[SignIn][Google] start");
+
     try {
       setGoogleLoading(true);
-      await loginWithGoogle();
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      const { email, name } = await getGoogleProfile();
+      console.log("[SignIn][Google] profile:", { email, name });
+
+      console.log("[SignIn][Google] POST /auth/google...");
+      const raw = await loginWithGoogle({ email, name }); // sua rota é /auth/google no service
+      console.log("[SignIn][Google] backend RAW:", raw);
+
+      const { accessToken, refreshToken } = normalizeAuthTokens(raw);
+      console.log("[SignIn][Google] Tokens normalizados", { hasAccess: !!accessToken, hasRefresh: !!refreshToken });
+
+      if (!accessToken) throw new Error("Token ausente no login com Google.");
+
+      console.log("[SignIn][Google] Chamando /users/me com accessToken...");
+      const me = await safeGetMe(accessToken);
+      console.log("[SignIn][Google] /users/me:", me);
+
+      const payload: SessionPayload = {
+        user: me ?? null,
+        accessToken,
+        refreshToken: refreshToken ?? null,
+      };
+
+      await setSession(payload);
+      Toast.show({ type: "success", text1: "Bem-vindo com Google!" });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace("/(tabs)");
     } catch (e: any) {
-      console.log("Erro ao iniciar login com Google", e);
+      console.log("[SignIn][Google] ERROR:", e);
+      console.log("[SignIn][Google] ERROR response:", e?.response?.data);
+
+      await clearSession();
       Toast.show({
         type: "error",
-        text1: "Não foi possível abrir o Google",
-        text2:
-          extractErrorMessage(e) ??
-          "Tente novamente em alguns instantes.",
+        text1: "Falha no login com Google",
+        text2: extractErrorMessage(e) ?? e?.response?.data?.message ?? e?.message ?? "Erro desconhecido",
       });
-      await Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Error
-      );
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setGoogleLoading(false);
+      console.log("[SignIn][Google] end");
     }
   };
 
@@ -299,22 +299,16 @@ export default function SignIn() {
             {/* separador */}
             <View style={{ marginVertical: 16, flexDirection: "row", alignItems: "center" }}>
               <View style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
-              <Text style={{ marginHorizontal: 8, color: "#9CA3AF", fontSize: 12 }}>ou</Text>
+              <Text style={{ marginHorizontal: 8, color: "#9CA3AF", fontSize: 12 }}>
+                ou
+              </Text>
               <View style={{ flex: 1, height: 1, backgroundColor: "#E5E7EB" }} />
             </View>
 
             {/* Botão Google */}
-            <GoogleSignInButton
-              onPress={handleGoogleSignIn}
-              loading={googleLoading}
-            />
-            <View
-              style={{
-                marginTop: 16,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
+            <GoogleSignInButton onPress={handleGoogleSignIn} loading={googleLoading} />
+
+            <View style={{ marginTop: 16, flexDirection: "row", alignItems: "center" }}>
               <Text>Não tem conta? </Text>
               <Link href="/(auth)/register" asChild>
                 <Text style={{ color: "#2563EB", fontWeight: "700" }}>

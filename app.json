@@ -8,17 +8,18 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/svg/splash-soovi.svg",
+      "image": "./assets/images/splash-soovi.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.soovi.ios",
       "supportsTablet": true,
-      "icon": "./assets/images/svg/splash-soovi.svg"
+      "icon": "./assets/images/splash-soovi.png"
     },
     "android": {
       "splash": {
-        "image": "./assets/images/svg/splash-soovi.svg",
+        "image": "./assets/images/splash-soovi.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       },
@@ -39,7 +40,13 @@
       "expo-router",
       "expo-secure-store",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.998161092266-gg85ijqmb2apd1eddg29ulju6ere7hsl"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
