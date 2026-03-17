@@ -1,16 +1,44 @@
 import { api } from "@/services/client";
 import type {
-  Simulation,
-  SimulationListResponse,
-  CreateSimulationDTO,
-  UpdateSimulationDTO,
+    CreateSimulationDTO,
+    Simulation,
+    SimulationListResponse,
+    UpdateSimulationDTO,
 } from "@/types/simulation";
 
 export async function listSimulations(page = 1, limit = 10): Promise<SimulationListResponse> {
-  const { data } = await api.get<SimulationListResponse>("/simulation", {
+  const { data } = await api.get<any>("/simulation", {
     params: { page, limit },
   });
-  return data;
+
+  // Normaliza formatos variados que a API pode retornar:
+  // - array direto de simulações
+  // - { simulationData: [...] }
+  // - { data: [...] }
+  if (Array.isArray(data)) {
+    return { simulationData: data, page, limit, count: data.length };
+  }
+
+  if (data && Array.isArray(data.simulationData)) {
+    return data as SimulationListResponse;
+  }
+
+  if (data && Array.isArray(data.data)) {
+    return {
+      simulationData: data.data,
+      page: data.page ?? page,
+      limit: data.limit ?? limit,
+      count: data.count ?? data.data.length,
+    };
+  }
+
+  const maybeArr = data?.simulationData ?? data?.data ?? [];
+  return {
+    simulationData: Array.isArray(maybeArr) ? maybeArr : [],
+    page: data?.page ?? page,
+    limit: data?.limit ?? limit,
+    count: data?.count ?? (Array.isArray(maybeArr) ? maybeArr.length : 0),
+  };
 }
 
 export async function getSimulation(id: string): Promise<Simulation> {
