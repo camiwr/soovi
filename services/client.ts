@@ -1,10 +1,19 @@
-import axios, { AxiosError, AxiosRequestConfig } from "axios";
+import axios, { AxiosRequestConfig } from "axios";
+import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
-if (!API_URL) throw new Error("EXPO_PUBLIC_API_URL não definida.");
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL ??
+  (Constants.manifest?.extra as any)?.EXPO_PUBLIC_API_URL;
 
-export const api = axios.create({ baseURL: API_URL, timeout: 15000 });
+if (!API_URL) {
+  console.warn(
+    "EXPO_PUBLIC_API_URL não definida. Verifique .env, app.json/app.config.js ou variáveis de ambiente ao iniciar o app."
+  );
+}
+
+export const api = axios.create({ baseURL: API_URL ?? undefined, timeout: 15000 });
 
 let volatileAccessToken: string | null = null;
 

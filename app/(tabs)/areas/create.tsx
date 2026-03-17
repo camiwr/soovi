@@ -58,6 +58,15 @@ export default function CreateAreaScreen() {
   const [totalArea, setTotalArea] = useState("");
   const [registration, setRegistration] = useState("");
   const [location, setLocation] = useState("");
+  // Endereço detalhado
+  const [street, setStreet] = useState("");
+  const [number, setNumber] = useState("");
+  const [complement, setComplement] = useState("");
+  const [district, setDistrict] = useState("");
+  const [city, setCity] = useState("");
+  const [stateField, setStateField] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [linkLocation, setLinkLocation] = useState("");
   const [suggestedLotPrice, setSuggestedLotPrice] = useState(""); // string mascarada
   const [lotSize, setLotSize] = useState(""); // "TENx20" | "TENx30"
 
@@ -99,22 +108,32 @@ export default function CreateAreaScreen() {
         return;
       }
 
-      // Criar o payload a partir dos estados
+      // Criar o payload a partir dos estados (camelCase conforme API)
       const payload: CreateAreaDTO = {
         description: description.trim(),
-        total_area_hectare: Number(totalArea) || 0,
-        lot_size: lotSize,
-        registration_number: registration.trim() || undefined,
+        totalAreaHectare: Number(totalArea) || 0,
+        lotSize: lotSize,
+        registrationNumber: registration.trim() || undefined,
+        // Endereço dividido
+        street: street.trim() || undefined,
+        number: number.trim() || undefined,
+        complement: complement.trim() || undefined,
+        district: district.trim() || undefined,
+        city: city.trim() || undefined,
+        state: stateField.trim() || undefined,
+        zipCode: zipCode.trim() || undefined,
+        linkLocation: linkLocation.trim() || undefined,
+        // campo legado/opcional que antes existia
         location: location.trim() || undefined,
         // 🔹 Agora usando o parser centralizado
-        suggested_lot_price: parseCurrencyBRLToNumber(suggestedLotPrice),
-      };
+        suggestedLotPrice: parseCurrencyBRLToNumber(suggestedLotPrice),
+      } as any;
 
       // Validação do frontend
       if (
         !payload.description ||
-        !payload.lot_size ||
-        !(payload.total_area_hectare > 0)
+        !payload.lotSize ||
+        !(payload.totalAreaHectare > 0)
       ) {
         Alert.alert(
           "Atenção",
@@ -236,14 +255,69 @@ export default function CreateAreaScreen() {
           onChangeText={setRegistration}
         />
 
-        <Text style={[s.label, { marginTop: 15 }]}>
-          Localização (opcional)
-        </Text>
+        <Text style={[s.label, { marginTop: 15 }]}>Endereço</Text>
+        <TextInput
+          style={[s.input, { marginBottom: 12 }]}
+          placeholder="Rua"
+          value={street}
+          onChangeText={setStreet}
+        />
+
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TextInput
+            style={[s.input, { flex: 1 }]}
+            placeholder="Número"
+            value={number}
+            onChangeText={setNumber}
+          />
+          <TextInput
+            style={[s.input, { flex: 1 }]}
+            placeholder="Complemento"
+            value={complement}
+            onChangeText={setComplement}
+          />
+        </View>
+
+        <Text style={[s.label, { marginTop: 12 }]}>Bairro</Text>
+        <TextInput
+          style={[s.input, { marginBottom: 12 }]}
+          placeholder="Bairro"
+          value={district}
+          onChangeText={setDistrict}
+        />
+
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TextInput
+            style={[s.input, { flex: 1 }]}
+            placeholder="Cidade"
+            value={city}
+            onChangeText={setCity}
+          />
+          <TextInput
+            style={[s.input, { flex: 1 }]}
+            placeholder="Estado"
+            value={stateField}
+            onChangeText={setStateField}
+          />
+        </View>
+
+        <Text style={[s.label, { marginTop: 12 }]}>CEP</Text>
+        <TextInput
+          style={[s.input, { marginBottom: 12 }]}
+          placeholder="00000000"
+          value={zipCode}
+          // aceita apenas números, máximo 8 caracteres
+          keyboardType="numeric"
+          maxLength={8}
+          onChangeText={(text) => setZipCode(text.replace(/\D/g, ""))}
+        />
+
+        <Text style={[s.label, { marginTop: 12 }]}>Link de localização (opcional)</Text>
         <TextInput
           style={[s.input, { marginBottom: 15 }]}
-          placeholder="Endereço, cidade ou coordenadas"
-          value={location}
-          onChangeText={setLocation}
+          placeholder="Link do mapa ou coordenadas"
+          value={linkLocation}
+          onChangeText={setLinkLocation}
         />
 
         <Text style={[s.label, { marginBottom: 15 }]}>

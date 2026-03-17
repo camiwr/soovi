@@ -86,18 +86,22 @@ export default function AreaDetails() {
   if (loading) return <View style={s.center}><ActivityIndicator /></View>;
   if (!area) return <View style={s.container}><Text>Área não encontrada.</Text></View>;
 
+  const safeTotal = (area as any).total_area_hectare ?? (area as any).totalAreaHectare ?? (area as any).totalArea ?? area.total_area_hectare;
+  const safeLotSize = (area as any).lot_size ?? (area as any).lotSize ?? area.lot_size;
+  const safeCreated = (area as any).created_at ?? (area as any).createdAt ?? area.created_at;
+
   return (
     <ScrollView contentContainerStyle={s.container}>
       <Text style={s.title}>{area.description}</Text>
 
       <View style={s.infoBox}>
         <Text style={s.infoLabel}>Área Total</Text>
-        <Text style={s.infoValue}>{area.total_area_hectare} hectares</Text>
+        <Text style={s.infoValue}>{safeTotal ?? ""} hectares</Text>
       </View>
 
       <View style={s.infoBox}>
         <Text style={s.infoLabel}>Tamanho do Lote</Text>
-        <Text style={s.infoValue}>{formatLotSize(area.lot_size)}</Text>
+        <Text style={s.infoValue}>{formatLotSize(safeLotSize ?? "")}</Text>
       </View>
 
       {area.registration_number && (
@@ -121,7 +125,7 @@ export default function AreaDetails() {
         </View>
       )}
 
-      <Text style={s.date}>Criada em: {new Date(area.created_at).toLocaleString()}</Text>
+      <Text style={s.date}>Criada em: {safeCreated ? new Date(safeCreated).toLocaleString() : "-"}</Text>
 
       {/* Botões de Ação */}
       <View style={s.buttonRow}>

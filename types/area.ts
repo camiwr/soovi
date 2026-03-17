@@ -12,11 +12,20 @@ export type Area = {
 
 export type CreateAreaDTO = {
   description: string;
-  total_area_hectare: number;
-  lot_size: string;
-  registration_number?: string;
-  location?: string;
-  suggested_lot_price?: number;
+  totalAreaHectare: number;
+  lotSize: string;
+  registrationNumber?: string;
+  // Endereço dividido
+  street?: string;
+  number?: string;
+  complement?: string;
+  district?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  linkLocation?: string;
+  // Preço sugerido em número (BRL)
+  suggestedLotPrice?: number;
 };
 
 export type UpdateAreaDTO = Partial<CreateAreaDTO>;
